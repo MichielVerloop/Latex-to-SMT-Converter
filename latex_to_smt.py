@@ -302,7 +302,6 @@ class LatexVisitor(NodeVisitor):
         return self.handle_rexpr(">", visited_children)
 
     def visit_geq(self, node, visited_children):
-        print(visited_children)
         return self.handle_rexpr(">=", visited_children)
 
     def visit_plus(self, node, visited_children):
