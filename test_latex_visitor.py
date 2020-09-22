@@ -93,6 +93,11 @@ class TestLatexVisitor(TestCase):
         output = output.replace("\n", "").replace("\r\n", "")
         self.assertEqual("(or(and x_1 y_1 (= x z_1))(and x_2 y_2 (= x z_2)))", output)
 
+    def test_visit_sum(self):
+        output = self.lv.parse("\\sum_{i=1}^{3}(x_i-3)")
+        output = output.replace("\n", "").replace("\r\n", "")
+        self.assertEqual("(+(- x_1 3)(- x_2 3))", output)
+
     def test_visit_and(self):
         output = self.lv.parse("(x\landy\landz)")
         self.assertEqual("(and x y z)", output)

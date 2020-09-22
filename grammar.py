@@ -5,11 +5,12 @@ from parsimonious.grammar import Grammar
 class BoolGrammar:
     latex_grammar = Grammar(
         """
-    expr            = wedge / vee / varint / nexpr
+    expr            = wedge / vee / sum / varint / nexpr
     nexpr           = "("expr rexpr")"
     rexpr           = not / and / or / implies / equals / le / leq / ge / geq / plus / minus / times / varint
     wedge           = ("\\\\bigwedge_{" lower "}" "^{" reduciblevarint "}" expr)
     vee             = ("\\\\bigvee_{" lower "}" "^{" reduciblevarint "}" expr)
+    sum             = "\\\\sum_{" lower "}" "^{" reduciblevarint "}" expr
     lower           = localvar "=" reduciblevarint
     lowup           = localvar (","localvar)* ":" reduciblevarint (("\\\\leq" / "<") reduciblevarint)+
     reduciblevarint = (var / int) (("+" / "-") (var / int))*

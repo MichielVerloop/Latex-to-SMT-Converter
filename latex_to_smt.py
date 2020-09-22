@@ -214,6 +214,9 @@ class LatexVisitor(NodeVisitor):
     def visit_vee(self, node, visited_children):
         return self.handle_sum("or", visited_children)
 
+    def visit_sum(self, node, visited_children):
+        return self.handle_sum("+", visited_children)
+
     def visit_not(self, node, visited_children):
         return self.handle_rexpr("not", visited_children)
 
