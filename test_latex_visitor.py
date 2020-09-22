@@ -186,6 +186,14 @@ class TestLatexVisitor(TestCase):
         output = self.lv.parse("(x=y)")
         self.assertEqual("(= x y)", output)
 
+    def test_visit_not(self):
+        output = self.lv.parse("\\lnotx")
+        self.assertEqual("(not x)", output)
+
+        self.setUp()
+        output = self.lv.parse("\\lnot(x\landy)")
+        self.assertEqual("(not (and x y))", output)
+
     def test_visit_equals_and_and(self):
         output = self.lv.parse("((x=y)\\landx\\land(y=z))")
         self.assertEqual("(and (= x y) x (= y z))", output)

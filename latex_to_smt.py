@@ -290,7 +290,7 @@ class LatexVisitor(NodeVisitor):
         return self.handle_rsum("+", visited_children)
 
     def visit_not(self, node, visited_children):
-        return self.handle_rexpr("not", visited_children)
+        return "(not " + visited_children[1] + ")"
 
     def visit_and(self, node, visited_children):
         return self.handle_rexpr("and", visited_children)

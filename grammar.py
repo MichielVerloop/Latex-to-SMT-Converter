@@ -6,9 +6,9 @@ from parsimonious.grammar import Grammar
 class BoolGrammar:
     latex_grammar = Grammar(
         """
-    expr            = wedge / rwedge / vee / rvee / sum / rsum / ite / varint / nexpr
+    expr            = wedge / rwedge / vee / rvee / sum / rsum / ite / not / varint / nexpr
     nexpr           = "("expr rexpr")"
-    rexpr           = not / and / or / implies / equals / le / leq / ge / geq / plus / minus / times / varint
+    rexpr           = and / or / implies / equals / le / leq / ge / geq / plus / minus / times / varint
     ite             = "\\\\T{if}" expr "\\\\T{then}" expr "\\\\T{else}" expr
     wedge           = "\\\\bigwedge_{" lower "}" "^{" reduciblevarint "}" expr
     vee             = "\\\\bigvee_{" lower "}" "^{" reduciblevarint "}" expr
