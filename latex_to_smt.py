@@ -208,6 +208,9 @@ class LatexVisitor(NodeVisitor):
     def visit_lower(self, node, visited_children):
         return [visited_children[0], visited_children[2]]
 
+    def visit_ite(self, node, visited_children):
+        return "(ite " + visited_children[1] + " " + visited_children[3] + " " + visited_children[5] +")"
+
     def visit_wedge(self, node, visited_children):
         return self.handle_sum("and", visited_children)
 

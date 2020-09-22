@@ -1,13 +1,15 @@
 import re
 from parsimonious.grammar import Grammar
 
-#TODO: negative integers
+
+# TODO: negative integers
 class BoolGrammar:
     latex_grammar = Grammar(
         """
-    expr            = wedge / vee / sum / varint / nexpr
+    expr            = wedge / vee / sum / ite / varint / nexpr
     nexpr           = "("expr rexpr")"
     rexpr           = not / and / or / implies / equals / le / leq / ge / geq / plus / minus / times / varint
+    ite             = "\\\\T{if}" expr "\\\\T{then}" expr "\\\\T{else}" expr
     wedge           = ("\\\\bigwedge_{" lower "}" "^{" reduciblevarint "}" expr)
     vee             = ("\\\\bigvee_{" lower "}" "^{" reduciblevarint "}" expr)
     sum             = "\\\\sum_{" lower "}" "^{" reduciblevarint "}" expr

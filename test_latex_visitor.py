@@ -48,12 +48,11 @@ class TestLatexVisitor(TestCase):
         output = self.lv.parse("x_{y,0,86,z}")
         self.assertEqual("x_y_0_86_z", output)
 
-
     def test_visit_int(self):
         output = self.lv.parse("0")
         self.assertEqual("0", output)
 
-    #TODO: implement reals
+    # TODO: implement reals
     # def test_visit_int_realint(self):
     #     output = self.lv.parse("0.1")
     #     self.assertEqual("0.1", output)
@@ -64,7 +63,9 @@ class TestLatexVisitor(TestCase):
     #     output = self.lv.parse(".1")
     #     self.assertEqual(".1", output)
 
-
+    def test_visit_ite(self):
+        output = self.lv.parse("\\T{if}x\\T{then}(y\\landz)\\T{else}z")
+        self.assertEqual("(ite x (and y z) z)", output)
 
     def test_visit_wedge_int_bounds(self):
         # # Low variant
@@ -96,7 +97,9 @@ class TestLatexVisitor(TestCase):
         self.lv.global_vars = {"x": 1, "y": 3}
         output = self.lv.parse("\\bigwedge_{i=0}^{2}\\bigwedge_{j=0}^{2}(x_{i,j}\landy_i\land(x=z_i))")
         output = output.replace("\n", "").replace("\r\n", "")
-        self.assertEqual("(and(and(and x_0_0 y_0 (= x z_0))(and x_0_1 y_0 (= x z_0)))(and(and x_1_0 y_1 (= x z_1))(and x_1_1 y_1 (= x z_1))))", output)
+        self.assertEqual(
+            "(and(and(and x_0_0 y_0 (= x z_0))(and x_0_1 y_0 (= x z_0)))(and(and x_1_0 y_1 (= x z_1))(and x_1_1 y_1 (= x z_1))))",
+            output)
 
     def test_visit_vee(self):
         # Lower and upper variant
@@ -141,7 +144,9 @@ class TestLatexVisitor(TestCase):
     def test_visit_vee_and_wedge(self):
         output = self.lv.parse("\\bigwedge_{i=1}^{3}\\bigvee_{j=0}^{2}(x_i\landy_i\landj\land(x=z_i=j_j=g_j))")
         output = output.replace("\n", "").replace("\r\n", "")
-        self.assertEqual("(and(or(and x_1 y_1 j (= x z_1 j_0 g_0))(and x_1 y_1 j (= x z_1 j_1 g_1)))(or(and x_2 y_2 j (= x z_2 j_0 g_0))(and x_2 y_2 j (= x z_2 j_1 g_1))))", output)
+        self.assertEqual(
+            "(and(or(and x_1 y_1 j (= x z_1 j_0 g_0))(and x_1 y_1 j (= x z_1 j_1 g_1)))(or(and x_2 y_2 j (= x z_2 j_0 g_0))(and x_2 y_2 j (= x z_2 j_1 g_1))))",
+            output)
 
     def test_globals_dont_inherently_stay_as_definitions(self):
         self.lv.global_vars = {"R": 3}
