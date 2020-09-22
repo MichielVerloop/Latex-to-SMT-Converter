@@ -167,7 +167,6 @@ class LatexVisitor(NodeVisitor):
         # substitute the variable in the expression
         for i in range(localvarstart, localvarend):
             result += expr.replace("_" + localvar, "_" + str(i)) + "\n"
-
         # Replace the general version of the variables with the non-general version
         localsetvars = OrderedSet([])
         for var in self.variables:
@@ -177,7 +176,6 @@ class LatexVisitor(NodeVisitor):
             self.variables.remove(var)
             for i in range(localvarstart, localvarend):
                 self.variables.add(var.replace("_" + localvar, "_" + str(i)))
-
         result += ")"
         return result
 

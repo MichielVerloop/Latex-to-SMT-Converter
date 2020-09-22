@@ -126,3 +126,22 @@ class TestLatexVisitor(TestCase):
         output = self.lv.parse("\\bigwedge_{i=1}^{3}\\bigvee_{j=0}^{2}(x_i\landy_i\landj\land(x=z_i=j_j=g_j))")
         output = output.replace("\n", "").replace("\r\n", "")
         self.assertEqual("(and(or(and x_1 y_1 j (= x z_1 j_0 g_0))(and x_1 y_1 j (= x z_1 j_1 g_1)))(or(and x_2 y_2 j (= x z_2 j_0 g_0))(and x_2 y_2 j (= x z_2 j_1 g_1))))", output)
+
+    def test_globals_dont_inherently_stay_as_definitions(self):
+        self.lv.global_vars = {"R": 3}
+        output = self.lv.parse("x")
+        self.assertIn("x", self.lv.variables)
+        self.assertNotIn("R", self.lv.variables)
+
+        # If the global is explicitly used then it should be defined.
+        self.setUp()
+        self.lv.global_vars = {"R": 3}
+        output = self.lv.parse("R")
+        self.assertIn("R", self.lv.variables)
+
+        # If the global is present in a reduciblevarint it should be defined.
+        self.setUp()
+        self.lv.global_vars = {"R": 3}
+        output = self.lv.parse("\\bigvee_{i=0}^{R}x")
+        self.assertIn("R", self.lv.variables)
+        self.assertIn("x", self.lv.variables)
