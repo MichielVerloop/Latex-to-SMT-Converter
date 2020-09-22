@@ -38,6 +38,17 @@ class TestLatexVisitor(TestCase):
         output = self.lv.parse("x_{y,z}")
         self.assertEqual("x_y_z", output)
 
+        # With _0
+        self.setUp()
+        output = self.lv.parse("x_0")
+        self.assertEqual("x_0", output)
+
+        # With _{y,0,86,z}
+        self.setUp()
+        output = self.lv.parse("x_{y,0,86,z}")
+        self.assertEqual("x_y_0_86_z", output)
+
+
     def test_visit_int(self):
         output = self.lv.parse("0")
         self.assertEqual("0", output)
