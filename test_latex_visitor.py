@@ -103,7 +103,6 @@ class TestLatexVisitor(TestCase):
 
     def test_visit_wedge_subset_var(self):
         output = self.lv.parse("\\bigwedge_{xi=0}^{2}\\bigwedge_{x=0}^{2}\\bigwedge_{i=0}^{2}x_{xi,i,x}")
-        print(output)
         output = output.replace("\n", "").replace("\r\n", "")
         self.assertEqual(
             "(and(and(andx_0_0_0x_0_1_0)(andx_0_0_1x_0_1_1))(and(andx_1_0_0x_1_1_0)(andx_1_0_1x_1_1_1)))",
@@ -111,14 +110,12 @@ class TestLatexVisitor(TestCase):
 
     def test_visit_wedge_subset_neighbour(self):
         output = self.lv.parse("\\bigwedge_{xi=0}^{2}x_{xi,xi}")
-        print(output)
         output = output.replace("\n", "").replace("\r\n", "")
         self.assertEqual("(andx_0_0x_1_1)", output)
 
     def test_visit_vee(self):
         # Lower and upper variant
         output = self.lv.parse("\\bigvee_{i=1}^{3}(x_i\\landy_i\\land(x=z_i))")
-        print(output)
         output = output.replace("\n", "").replace("\r\n", "")
         self.assertEqual("(or(and x_1 y_1 (= x z_1))(and x_2 y_2 (= x z_2)))", output)
 
@@ -193,6 +190,16 @@ class TestLatexVisitor(TestCase):
         self.setUp()
         output = self.lv.parse("\\lnot(x\landy)")
         self.assertEqual("(not (and x y))", output)
+
+    def test_visit_neq(self):
+        output = self.lv.parse("(x\\neqy)")
+        self.assertEqual("(not (= x y))", output)
+
+        output = self.lv.parse("(x\\neq(y\\landz))")
+        self.assertEqual("(not (= x (and y z)))", output)
+
+        output = self.lv.parse("(x\\neq(y\\neqz))")
+        self.assertEqual("(not (= x (not (= y z))))", output)
 
     def test_visit_equals_and_and(self):
         output = self.lv.parse("((x=y)\\landx\\land(y=z))")

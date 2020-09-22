@@ -8,7 +8,7 @@ class BoolGrammar:
         """
     expr            = wedge / rwedge / vee / rvee / sum / rsum / ite / not / varint / nexpr
     nexpr           = "("expr rexpr")"
-    rexpr           = and / or / implies / equals / le / leq / ge / geq / plus / minus / times / varint
+    rexpr           = and / or / implies / equals / neq / le / leq / ge / geq / plus / minus / times / varint
     ite             = "\\\\T{if}" expr "\\\\T{then}" expr "\\\\T{else}" expr
     wedge           = "\\\\bigwedge_{" lower "}" "^{" reduciblevarint "}" expr
     vee             = "\\\\bigvee_{" lower "}" "^{" reduciblevarint "}" expr
@@ -28,6 +28,7 @@ class BoolGrammar:
     or              = ("\\\\lor" expr)+
     implies         = ("\\\\to" expr)+
     equals          = ("=" expr)+
+    neq             = "\\\\neq" expr
     not             = "\\\\lnot" expr
     le              = "<" expr
     leq             = "\\\\leq" expr
@@ -66,6 +67,7 @@ class BoolGrammar:
         "<=": "\\leq",
         ">=": "\\geq",
         "*": "\\cdot",
+        "!=": "\\neq",
         "=": "=",
         "<": "<",
         ">": ">",
