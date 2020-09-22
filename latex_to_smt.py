@@ -186,10 +186,22 @@ class LatexVisitor(NodeVisitor):
         if add_operand:  # Only add an operand if we have an operand to add
             result += "(" + operand + "\n"
         # TODO: case lowup
-
         # substitute the variable in the expression
         for i in range(localvarstart, localvarend):
-            result += expr.replace("_" + localvar, "_" + str(i)) + "\n"
+            # Because we match on adjacent underscores, we need to do two passes.
+            # Only in the second one we add it to the result
+            subresult = expr.replace("_" + localvar + "_", "_" + str(i) + "_") \
+                            .replace("_" + localvar + "\n", "_" + str(i) + "\n") \
+                            .replace("_" + localvar + " ", "_" + str(i) + " ") \
+                            .replace("_" + localvar + ")", "_" + str(i) + ")")
+            result += subresult.replace("_" + localvar + "_", "_" + str(i) + "_") \
+                            .replace("_" + localvar + "\n", "_" + str(i) + "\n") \
+                            .replace("_" + localvar + " ", "_" + str(i) + " ") \
+                            .replace("_" + localvar + ")", "_" + str(i) + ")")
+            # Find variables at the end of the string and replace them
+            if result.rfind("_" + localvar) + len("_" + localvar) == len(result):
+                result = result[0:result.rfind("_" + localvar) + 1] + str(i)
+            result += "\n"
         # Replace the general version of the variables with the non-general version
         localsetvars = OrderedSet([])
         for var in self.variables:
@@ -214,7 +226,7 @@ class LatexVisitor(NodeVisitor):
         for var in localvars[::-1]:
             expr = self.handle_sum("", var, truemin(var, inequalities, minimum),
                                    truemax(var, inequalities, maximum) + 1,  # + 1 is to compensate for the exclusivity
-                                   expr)                                     # of the upper bound
+                                   expr)  # of the upper bound
         result = "(" + operand + "\n" + expr + ")"
         return result
 

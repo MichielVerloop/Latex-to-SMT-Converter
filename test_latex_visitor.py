@@ -101,9 +101,24 @@ class TestLatexVisitor(TestCase):
             "(and(and(and x_0_0 y_0 (= x z_0))(and x_0_1 y_0 (= x z_0)))(and(and x_1_0 y_1 (= x z_1))(and x_1_1 y_1 (= x z_1))))",
             output)
 
+    def test_visit_wedge_subset_var(self):
+        output = self.lv.parse("\\bigwedge_{xi=0}^{2}\\bigwedge_{x=0}^{2}\\bigwedge_{i=0}^{2}x_{xi,i,x}")
+        print(output)
+        output = output.replace("\n", "").replace("\r\n", "")
+        self.assertEqual(
+            "(and(and(andx_0_0_0x_0_1_0)(andx_0_0_1x_0_1_1))(and(andx_1_0_0x_1_1_0)(andx_1_0_1x_1_1_1)))",
+            output)
+
+    def test_visit_wedge_subset_neighbour(self):
+        output = self.lv.parse("\\bigwedge_{xi=0}^{2}x_{xi,xi}")
+        print(output)
+        output = output.replace("\n", "").replace("\r\n", "")
+        self.assertEqual("(andx_0_0x_1_1)", output)
+
     def test_visit_vee(self):
         # Lower and upper variant
         output = self.lv.parse("\\bigvee_{i=1}^{3}(x_i\\landy_i\\land(x=z_i))")
+        print(output)
         output = output.replace("\n", "").replace("\r\n", "")
         self.assertEqual("(or(and x_1 y_1 (= x z_1))(and x_2 y_2 (= x z_2)))", output)
 
@@ -113,7 +128,7 @@ class TestLatexVisitor(TestCase):
         self.assertEqual("(+(- x_1 3)(- x_2 3))", output)
 
     def test_visit_rwedge(self):
-        #Lowup variant is equivalent to the lower and upper variant
+        # Lowup variant is equivalent to the lower and upper variant
         output_normal_wedge = self.lv.parse("\\bigwedge_{i=0}^{3}x_i")
         output = self.lv.parse("\\bigwedge_{i:0\\leqi<3}x_i")
         output_normal_wedge = output_normal_wedge.replace("\n", "").replace("\r\n", "")
@@ -184,19 +199,19 @@ class TestLatexVisitor(TestCase):
 
     def test_globals_dont_inherently_stay_as_definitions(self):
         self.lv.global_vars = {"R": 3}
-        output = self.lv.parse("x")
+        self.lv.parse("x")
         self.assertIn("x", self.lv.variables)
         self.assertNotIn("R", self.lv.variables)
 
         # If the global is explicitly used then it should be defined.
         self.setUp()
         self.lv.global_vars = {"R": 3}
-        output = self.lv.parse("R")
+        self.lv.parse("R")
         self.assertIn("R", self.lv.variables)
 
         # If the global is present in a reduciblevarint it should be defined.
         self.setUp()
         self.lv.global_vars = {"R": 3}
-        output = self.lv.parse("\\bigvee_{i=0}^{R}x")
+        self.lv.parse("\\bigvee_{i=0}^{R}x")
         self.assertIn("R", self.lv.variables)
         self.assertIn("x", self.lv.variables)
