@@ -193,7 +193,8 @@ class LatexVisitor(NodeVisitor):
             subresult = expr.replace("_" + localvar + "_", "_" + str(i) + "_") \
                             .replace("_" + localvar + "\n", "_" + str(i) + "\n") \
                             .replace("_" + localvar + " ", "_" + str(i) + " ") \
-                            .replace("_" + localvar + ")", "_" + str(i) + ")")
+                            .replace("_" + localvar + ")", "_" + str(i) + ")") \
+                            .replace("\\markreplaceable{" + localvar + "}", str(i))
             result += subresult.replace("_" + localvar + "_", "_" + str(i) + "_") \
                             .replace("_" + localvar + "\n", "_" + str(i) + "\n") \
                             .replace("_" + localvar + " ", "_" + str(i) + " ") \

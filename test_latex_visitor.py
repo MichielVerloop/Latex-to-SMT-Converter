@@ -119,6 +119,18 @@ class TestLatexVisitor(TestCase):
         output = output.replace("\n", "").replace("\r\n", "")
         self.assertEqual("(or(and x_1 y_1 (= x z_1))(and x_2 y_2 (= x z_2)))", output)
 
+    def test_visit_vee_replace_explicit(self):
+        # Without marking i for replacement, i is not replaced.
+        output = self.lv.parse("\\bigvee_{i=0}^{3}i")
+        output = output.replace("\n", "").replace("\r\n", "")
+        self.assertEqual("(oriii)", output)
+
+        self.setUp()
+        # When marking i for replacement, i is replaced.
+        output = self.lv.parse("\\bigvee_{i=0}^{3}\\markreplaceable{i}")
+        output = output.replace("\n", "").replace("\r\n", "")
+        self.assertEqual("(or012)", output)
+
     def test_visit_sum(self):
         output = self.lv.parse("\\sum_{i=1}^{3}(x_i-3)")
         output = output.replace("\n", "").replace("\r\n", "")

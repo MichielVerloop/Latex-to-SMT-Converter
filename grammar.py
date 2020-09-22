@@ -19,9 +19,10 @@ class BoolGrammar:
     lower           = localvar "=" reduciblevarint
     lowup           = localvar (","localvar)* ":" reduciblevarint ("\\\\leq" / "<") (localvar ("\\\\leq" / "<"))+ reduciblevarint
     reduciblevarint = (var / int) (("+" / "-") (var / int))*
-    varint          = (var / int)
+    varint          = (var / replaceablevar / int)
     int             = ~"[0-9]"+
     localvar        = ~"[a-z_]+"i
+    replaceablevar  = "\\\\markreplaceable{" var "}"
     var             = (string "_{" (string/int) ("," (string/int))* "}") / (string "_" (string/int)) / (string) 
     string          = ~"[a-z]+"i
     and             = ("\\\\land" expr)+
