@@ -1,5 +1,5 @@
 from parsimonious.nodes import NodeVisitor
-from six import reraise
+import re
 
 from OrderedSet import OrderedSet
 from grammar import BoolGrammar
@@ -76,6 +76,24 @@ def resolve(global_vars, varint):
         del varint[0]
         varint[0] = shortened
     return varint[0]
+
+
+def truemin(var, inequalities, minimum):
+    for i in inequalities:
+        if i == "<":
+            minimum += 1
+        if i == var:
+            break
+    return minimum
+
+
+def truemax(var, inequalities, maximum):
+    for i in inequalities[::-1]:  # reverse the list
+        if i == "<":
+            maximum -= 1
+        if i == var:
+            break
+    return maximum
 
 
 class GlobalVisitor(NodeVisitor):
@@ -155,14 +173,19 @@ class LatexVisitor(NodeVisitor):
             result += child.replace(BoolGrammar.operand_dict.get(operand), " ")
         return [operand + " ", result]
 
-    def handle_sum(self, operand, visited_children):
-        result = "(" + operand + "\n"
-        # TODO: case lowup
-        # case lower and upper
+    def handle_sums(self, operand, visited_children):
         localvar = visited_children[1][0]
         localvarstart = int(visited_children[1][1])
         localvarend = int(visited_children[4])
         expr = visited_children[6]
+        return self.handle_sum(operand, localvar, localvarstart, localvarend, expr)
+
+    def handle_sum(self, operand, localvar, localvarstart, localvarend, expr):
+        add_operand = operand != ""
+        result = ""
+        if add_operand:  # Only add an operand if we have an operand to add
+            result += "(" + operand + "\n"
+        # TODO: case lowup
 
         # substitute the variable in the expression
         for i in range(localvarstart, localvarend):
@@ -176,7 +199,23 @@ class LatexVisitor(NodeVisitor):
             self.variables.remove(var)
             for i in range(localvarstart, localvarend):
                 self.variables.add(var.replace("_" + localvar, "_" + str(i)))
-        result += ")"
+        if add_operand:  # Only add ending brackets if we added an operand
+            result += ")"
+        else:  # We do not need an extra enter
+            result = result.rstrip()
+        return result
+
+    def handle_rsum(self, operand, visited_children):
+        localvars = visited_children[1][0]
+        minimum = int(visited_children[1][1][0])
+        inequalities = visited_children[1][2]
+        maximum = int(visited_children[1][3][0])
+        expr = visited_children[3]
+        for var in localvars[::-1]:
+            expr = self.handle_sum("", var, truemin(var, inequalities, minimum),
+                                   truemax(var, inequalities, maximum) + 1,  # + 1 is to compensate for the exclusivity
+                                   expr)                                     # of the upper bound
+        result = "(" + operand + "\n" + expr + ")"
         return result
 
     def visit_reduciblevarint(self, node, visited_children):
@@ -208,17 +247,36 @@ class LatexVisitor(NodeVisitor):
     def visit_lower(self, node, visited_children):
         return [visited_children[0], visited_children[2]]
 
+    def visit_lowup(self, node, visited_children):
+        localvars = [visited_children[0]] + visited_children[1].split(",")
+        localvars.remove("")
+        minimum = [visited_children[3]]
+        inequalities = [visited_children[4]] + re.split("(\\\\leq|<)", visited_children[5])
+        inequalities.remove("")
+        maximum = [visited_children[6]]
+        return [localvars] + [minimum] + [inequalities] + [maximum]
+
     def visit_ite(self, node, visited_children):
-        return "(ite " + visited_children[1] + " " + visited_children[3] + " " + visited_children[5] +")"
+        return "(ite " + visited_children[1] + " " + visited_children[3] + " " + visited_children[5] + ")"
 
     def visit_wedge(self, node, visited_children):
-        return self.handle_sum("and", visited_children)
+        print(visited_children)
+        return self.handle_sums("and", visited_children)
 
     def visit_vee(self, node, visited_children):
-        return self.handle_sum("or", visited_children)
+        return self.handle_sums("or", visited_children)
 
     def visit_sum(self, node, visited_children):
-        return self.handle_sum("+", visited_children)
+        return self.handle_sums("+", visited_children)
+
+    def visit_rwedge(self, node, visited_children):
+        return self.handle_rsum("and", visited_children)
+
+    def visit_rvee(self, node, visited_children):
+        return self.handle_rsum("or", visited_children)
+
+    def visit_rsum(self, node, visited_children):
+        return self.handle_rsum("+", visited_children)
 
     def visit_not(self, node, visited_children):
         return self.handle_rexpr("not", visited_children)

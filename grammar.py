@@ -6,15 +6,18 @@ from parsimonious.grammar import Grammar
 class BoolGrammar:
     latex_grammar = Grammar(
         """
-    expr            = wedge / vee / sum / ite / varint / nexpr
+    expr            = wedge / rwedge / vee / rvee / sum / rsum / ite / varint / nexpr
     nexpr           = "("expr rexpr")"
     rexpr           = not / and / or / implies / equals / le / leq / ge / geq / plus / minus / times / varint
     ite             = "\\\\T{if}" expr "\\\\T{then}" expr "\\\\T{else}" expr
-    wedge           = ("\\\\bigwedge_{" lower "}" "^{" reduciblevarint "}" expr)
-    vee             = ("\\\\bigvee_{" lower "}" "^{" reduciblevarint "}" expr)
+    wedge           = "\\\\bigwedge_{" lower "}" "^{" reduciblevarint "}" expr
+    vee             = "\\\\bigvee_{" lower "}" "^{" reduciblevarint "}" expr
+    rwedge          = "\\\\bigwedge_{" lowup "}" expr
+    rvee            = "\\\\bigvee_{" lowup "}" expr
     sum             = "\\\\sum_{" lower "}" "^{" reduciblevarint "}" expr
+    rsum            = "\\\\sum_{" lowup "}" expr
     lower           = localvar "=" reduciblevarint
-    lowup           = localvar (","localvar)* ":" reduciblevarint (("\\\\leq" / "<") reduciblevarint)+
+    lowup           = localvar (","localvar)* ":" reduciblevarint ("\\\\leq" / "<") (localvar ("\\\\leq" / "<"))+ reduciblevarint
     reduciblevarint = (var / int) (("+" / "-") (var / int))*
     varint          = (var / int)
     int             = ~"[0-9]"+
