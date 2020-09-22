@@ -16,7 +16,8 @@ class BoolGrammar:
     varint          = (var / int)
     int             = ~"[0-9]"+
     localvar        = ~"[a-z_]+"i
-    var             = ~"[a-z_]+"i
+    var             = (string "_{" string ("," string)* "}") / (string "_" string) / (string) 
+    string          = ~"[a-z]+"i
     and             = ("\\\\land" expr)+
     or              = ("\\\\lor" expr)+
     implies         = ("\\\\to" expr)+

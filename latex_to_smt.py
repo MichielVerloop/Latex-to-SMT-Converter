@@ -189,8 +189,9 @@ class LatexVisitor(NodeVisitor):
         return str(result)
 
     def visit_var(self, node, visited_children):
-        self.variables.add(node.text)
-        return node.text
+        var = node.text.replace(",", "_").replace("{", "").replace("}", "")
+        self.variables.add(var)
+        return var
 
     def visit_local_var(self, node, visited_children):
         return node.text

@@ -23,6 +23,21 @@ class TestLatexVisitor(TestCase):
         output = self.lv.parse("x")
         self.assertEqual("x", output)
 
+        # With _
+        self.setUp()
+        output = self.lv.parse("x_i")
+        self.assertEqual("x_i", output)
+
+        # With _{x}
+        self.setUp()
+        output = self.lv.parse("x_{i}")
+        self.assertEqual("x_i", output)
+
+        # With _{x,y}
+        self.setUp()
+        output = self.lv.parse("x_{y,z}")
+        self.assertEqual("x_y_z", output)
+
     def test_visit_int(self):
         output = self.lv.parse("0")
         self.assertEqual("0", output)
@@ -61,11 +76,16 @@ class TestLatexVisitor(TestCase):
 
     def test_visit_wedge_varint_bounds(self):
         # Using simple global arithmetic
-        self.setUp()
         self.lv.global_vars = {"x": 1, "y": 3}
         output = self.lv.parse("\\bigwedge_{i=y-2}^{x+2}(x_i\landy_i\land(x=z_i))")
         output = output.replace("\n", "").replace("\r\n", "")
         self.assertEqual("(and(and x_1 y_1 (= x z_1))(and x_2 y_2 (= x z_2)))", output)
+
+    def test_visit_wedge_complex_var(self):
+        self.lv.global_vars = {"x": 1, "y": 3}
+        output = self.lv.parse("\\bigwedge_{i=0}^{2}\\bigwedge_{j=0}^{2}(x_{i,j}\landy_i\land(x=z_i))")
+        output = output.replace("\n", "").replace("\r\n", "")
+        self.assertEqual("(and(and(and x_0_0 y_0 (= x z_0))(and x_0_1 y_0 (= x z_0)))(and(and x_1_0 y_1 (= x z_1))(and x_1_1 y_1 (= x z_1))))", output)
 
     def test_visit_vee(self):
         # Lower and upper variant
