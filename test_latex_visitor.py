@@ -163,6 +163,10 @@ class TestLatexVisitor(TestCase):
         output = self.lv.parse("(x=y=z)")
         self.assertEqual("(= x y z)", output)
 
+    def test_visit_geq(self):
+        output = self.lv.parse("(4\\geqy)")
+        self.assertEqual("(>= 4 y)", output)
+
     def test_visit_rexpr(self):
         output = self.lv.parse("(x=y)")
         self.assertEqual("(= x y)", output)

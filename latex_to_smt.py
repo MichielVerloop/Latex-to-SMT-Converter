@@ -260,7 +260,6 @@ class LatexVisitor(NodeVisitor):
         return "(ite " + visited_children[1] + " " + visited_children[3] + " " + visited_children[5] + ")"
 
     def visit_wedge(self, node, visited_children):
-        print(visited_children)
         return self.handle_sums("and", visited_children)
 
     def visit_vee(self, node, visited_children):
@@ -303,6 +302,7 @@ class LatexVisitor(NodeVisitor):
         return self.handle_rexpr(">", visited_children)
 
     def visit_geq(self, node, visited_children):
+        print(visited_children)
         return self.handle_rexpr(">=", visited_children)
 
     def visit_plus(self, node, visited_children):
