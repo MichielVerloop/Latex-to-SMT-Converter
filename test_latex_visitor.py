@@ -67,6 +67,11 @@ class TestLatexVisitor(TestCase):
         output = self.lv.parse("\\T{if}x\\T{then}(y\\landz)\\T{else}z")
         self.assertEqual("(ite x (and y z) z)", output)
 
+    def test_visit_complex_ite(self):
+        self.lv.global_vars = {"R":5}
+        output = self.lv.parse("(2=\\T{if}(2=x)\\T{then}1\\T{else}0)")
+        self.assertEqual("(= 2 (ite (= 2 x) 1 0))", output)
+
     def test_visit_wedge_int_bounds(self):
         # # Low variant
         # output = self.iv.parse("\\bigwedge_{i:1<i<2}i")
@@ -126,10 +131,11 @@ class TestLatexVisitor(TestCase):
         self.assertEqual("(oriii)", output)
 
         self.setUp()
-        # When marking i for replacement, i is replaced.
+        # When marking i for replacement, i is replaced and not added to variables.
         output = self.lv.parse("\\bigvee_{i=0}^{3}\\markreplaceable{i}")
         output = output.replace("\n", "").replace("\r\n", "")
         self.assertEqual("(or012)", output)
+        self.assertNotIn("i", self.lv.variables)
 
     def test_visit_sum(self):
         output = self.lv.parse("\\sum_{i=1}^{3}(x_i-3)")
@@ -188,6 +194,8 @@ class TestLatexVisitor(TestCase):
         self.assertEqual("(= x y z)", output)
 
     def test_visit_geq(self):
+        List =range(10)
+        print(List[0:])
         output = self.lv.parse("(4\\geqy)")
         self.assertEqual("(>= 4 y)", output)
 
