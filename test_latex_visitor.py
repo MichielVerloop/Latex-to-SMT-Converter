@@ -1,4 +1,8 @@
+import re
 from unittest import TestCase
+
+from parsimonious import VisitationError
+
 from latex_to_smt import LatexVisitor
 
 
@@ -68,7 +72,7 @@ class TestLatexVisitor(TestCase):
         self.assertEqual("(ite x (and y z) z)", output)
 
     def test_visit_complex_ite(self):
-        self.lv.global_vars = {"R":5}
+        self.lv.global_vars = {"R": 5}
         output = self.lv.parse("(2=\\T{if}(2=x)\\T{then}1\\T{else}0)")
         self.assertEqual("(= 2 (ite (= 2 x) 1 0))", output)
 
@@ -148,29 +152,47 @@ class TestLatexVisitor(TestCase):
         output = self.lv.parse("\\bigwedge_{i:0\\leqi<3}x_i")
         output_normal_wedge = output_normal_wedge.replace("\n", "").replace("\r\n", "")
         output = output.replace("\n", "").replace("\r\n", "")
-        self.assertEqual(output_normal_wedge, output)
 
         # Lowup variant with 2 variables
         self.setUp()
         output = self.lv.parse("\\bigwedge_{i,j:0\\leqi<j<3}(x_i\\landx_j)")
         output = output.replace("\n", "").replace("\r\n", "")
-        self.assertEqual("(and(and x_0 x_1)(and x_0 x_2)(and x_1 x_1)(and x_1 x_2))", output)
+        self.assertEqual("(and(and x_0 x_1)(and x_1 x_1)(and x_0 x_2)(and x_1 x_2))", output)
+
 
         # Lowup variant with 3 variables
         self.setUp()
         output = self.lv.parse("\\bigwedge_{i,j,k:0\\leqi<j<k<4}x_{i,j,k}")
         output = output.replace("\n", "").replace("\r\n", "")
-        self.assertEqual("(andx_0_1_2x_0_1_3x_0_2_2x_0_2_3x_1_1_2x_1_1_3x_1_2_2x_1_2_3)", output)
+        self.assertEqual("(andx_0_1_2x_1_1_2x_0_2_2x_1_2_2x_0_1_3x_1_1_3x_0_2_3x_1_2_3)", output)
 
     def test_visit_rvee(self):
         output = self.lv.parse("\\bigvee_{i,j,k:0\\leqi<j<k<4}x_{i,j,k}")
+        print(output)
         output = output.replace("\n", "").replace("\r\n", "")
-        self.assertEqual("(orx_0_1_2x_0_1_3x_0_2_2x_0_2_3x_1_1_2x_1_1_3x_1_2_2x_1_2_3)", output)
+        self.assertEqual("(orx_0_1_2x_1_1_2x_0_2_2x_1_2_2x_0_1_3x_1_1_3x_0_2_3x_1_2_3)", output)
+
+    def test_visit_rvee_wrong_inequalities(self):
+        self.assertRaisesRegex(VisitationError, ".*ValueError.*", self.lv.parse,
+                               "\\bigvee_{i,ii:0\\leqi<ii<k<4}x_{i,ii}")
+
+    def test_visit_rvee_wrong_localvars(self):
+        self.assertRaisesRegex(VisitationError, ".*ValueError.*", self.lv.parse,
+                               "\\bigvee_{i,ii,k,h:0\\leqi<ii<k<4}x_{i,ii}")
+
+    def test_visit_rvee_subset_vars(self):
+        output = self.lv.parse("\\bigvee_{i,iii,ii:0\\leqiii<ii<i<4}x_{i,ii}")
+        print(output)
+        self.assertGreater(len(self.lv.variables), 0)
+        for i in self.lv.variables:
+            print(i)
+            for j in ["xi", "i", "xii", "ixi"]:
+                self.assertNotIn(j, i)
 
     def test_visit_rsum(self):
         output = self.lv.parse("\\sum_{i,j,k:0\\leqi<j<k<4}x_{i,j,k}")
         output = output.replace("\n", "").replace("\r\n", "")
-        self.assertEqual("(+x_0_1_2x_0_1_3x_0_2_2x_0_2_3x_1_1_2x_1_1_3x_1_2_2x_1_2_3)", output)
+        self.assertEqual("(+x_0_1_2x_1_1_2x_0_2_2x_1_2_2x_0_1_3x_1_1_3x_0_2_3x_1_2_3)", output)
 
     def test_visit_and(self):
         output = self.lv.parse("(x\\landy\\landz)")
@@ -194,7 +216,7 @@ class TestLatexVisitor(TestCase):
         self.assertEqual("(= x y z)", output)
 
     def test_visit_geq(self):
-        List =range(10)
+        List = range(10)
         print(List[0:])
         output = self.lv.parse("(4\\geqy)")
         self.assertEqual("(>= 4 y)", output)

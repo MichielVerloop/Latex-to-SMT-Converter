@@ -229,10 +229,17 @@ class LatexVisitor(NodeVisitor):
         inequalities = visited_children[1][2]
         maximum = int(visited_children[1][3][0])
         expr = visited_children[3]
-        for var in localvars[::-1]:
+        # The vars with the lowest length are generated first, so the "i" doesn't replace the i in "xi"
+        for var in sorted(localvars, key=len, reverse=True):
+            if not var in inequalities:
+                raise ValueError("Var " + var + " was not found in " + str(inequalities))
             expr = self.handle_sum("", var, truemin(var, inequalities, minimum),
                                    truemax(var, inequalities, maximum) + 1,  # + 1 is to compensate for the exclusivity
                                    expr)  # of the upper bound
+        remaining_vars = [x for x in inequalities if x not in localvars + ["\\leq"] + ["<"]]
+        if len(remaining_vars) != 0:
+            raise ValueError("Found variable(s) " + str(remaining_vars) + " in the inequalities " + str(inequalities)
+                             + "that were not introduced in the local variables, " + str(localvars) + ".")
         result = "(" + operand + "\n" + expr + ")"
         return result
 
@@ -249,7 +256,6 @@ class LatexVisitor(NodeVisitor):
         return var
 
     def visit_replaceablevar(self, node, visited_children):
-        print(visited_children[0] + visited_children[1] + visited_children[2])
         self.variables.remove(visited_children[1])
         return visited_children[0] + visited_children[1] + visited_children[2]
     def visit_local_var(self, node, visited_children):
