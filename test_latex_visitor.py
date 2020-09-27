@@ -235,13 +235,16 @@ class TestLatexVisitor(TestCase):
 
     def test_visit_neq(self):
         output = self.lv.parse("(x\\neqy)")
-        self.assertEqual("(not (= x y))", output)
+        self.assertEqual("(distinct x y)", output)
 
         output = self.lv.parse("(x\\neq(y\\landz))")
-        self.assertEqual("(not (= x (and y z)))", output)
+        self.assertEqual("(distinct x (and y z))", output)
 
         output = self.lv.parse("(x\\neq(y\\neqz))")
-        self.assertEqual("(not (= x (not (= y z))))", output)
+        self.assertEqual("(distinct x (distinct y z))", output)
+
+        output = self.lv.parse("(w\\neqx\\neqy\\neqz)")
+        self.assertEqual("(distinct w x y z)", output)
 
     def test_visit_equals_and_and(self):
         output = self.lv.parse("((x=y)\\landx\\land(y=z))")

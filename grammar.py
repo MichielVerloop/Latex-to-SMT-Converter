@@ -29,7 +29,7 @@ class BoolGrammar:
     or              = ("\\\\lor" expr)+
     implies         = ("\\\\to" expr)+
     equals          = ("=" expr)+
-    neq             = "\\\\neq" expr
+    neq             = ("\\\\neq" expr)+
     not             = "\\\\lnot" expr
     le              = "<" expr
     leq             = "\\\\leq" expr
@@ -68,7 +68,7 @@ class BoolGrammar:
         "<=": "\\leq",
         ">=": "\\geq",
         "*": "\\cdot",
-        "!=": "\\neq",
+        "distinct": "\\neq",
         "=": "=",
         "<": "<",
         ">": ">",
