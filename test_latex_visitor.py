@@ -1,4 +1,4 @@
-import re
+from collections import OrderedDict
 from unittest import TestCase
 
 from parsimonious import VisitationError
@@ -13,7 +13,9 @@ class TestLatexVisitor(TestCase):
     def test_get_definitions(self):
         output = self.lv.parse("(x\\landy)")
         output = self.lv.get_definitions() + output
-        success = "(declare-const x Int)\n(declare-const y Int)\n(and x y)" == output or "(declare-const y Int)\n(declare-const x Int)\n(and x y)" == output
+        print(output)
+        success = "(declare-const x Bool)\n(declare-const y Bool)\n(and x y)" == output \
+                  or "(declare-const y Bool)\n(declare-const x Bool)\n(and x y)" == output
         self.assertEqual(True, success)
 
     def test_visit_varint(self):
@@ -159,7 +161,6 @@ class TestLatexVisitor(TestCase):
         output = output.replace("\n", "").replace("\r\n", "")
         self.assertEqual("(and(and x_0 x_1)(and x_1 x_1)(and x_0 x_2)(and x_1 x_2))", output)
 
-
         # Lowup variant with 3 variables
         self.setUp()
         output = self.lv.parse("\\bigwedge_{i,j,k:0\\leqi<j<k<4}x_{i,j,k}")
@@ -231,7 +232,7 @@ class TestLatexVisitor(TestCase):
         self.assertEqual("(not x)", output)
 
         self.setUp()
-        output = self.lv.parse("\\lnot(x\landy)")
+        output = self.lv.parse("\\lnot(x\\landy)")
         self.assertEqual("(not (and x y))", output)
 
     def test_visit_neq(self):
@@ -262,6 +263,7 @@ class TestLatexVisitor(TestCase):
         self.lv.global_vars = {"R": 3}
         self.lv.parse("x")
         self.assertIn("x", self.lv.variables)
+        self.assertEqual(None, self.lv.variables.get("x"))
         self.assertNotIn("R", self.lv.variables)
 
         # If the global is explicitly used then it should be defined.
@@ -269,10 +271,48 @@ class TestLatexVisitor(TestCase):
         self.lv.global_vars = {"R": 3}
         self.lv.parse("R")
         self.assertIn("R", self.lv.variables)
+        self.assertEqual(None, self.lv.variables.get("R"))
 
         # If the global is present in a reduciblevarint it should be defined.
         self.setUp()
         self.lv.global_vars = {"R": 3}
         self.lv.parse("\\bigvee_{i=0}^{R}x")
-        self.assertIn("R", self.lv.variables)
         self.assertIn("x", self.lv.variables)
+        self.assertEqual(None, self.lv.variables.get("x"))
+        self.assertIn("R", self.lv.variables)
+        self.assertEqual(None, self.lv.variables.get("R"))
+
+    def test_variable_type_inference_lexpr(self):
+        # Test whether the left expression is properly assigned.
+        self.lv.parse("(x\\landy)")
+        self.assertIn("x", self.lv.variables)
+        self.assertEqual("Bool", self.lv.variables.get("x"))
+
+        self.setUp()
+        self.lv.parse("((x\\lorz)=(y\\lorz))")
+        self.assertIn("x", self.lv.variables)
+        self.assertEqual("Bool", self.lv.variables.get("x"))
+        self.assertIn("y", self.lv.variables)
+        self.assertEqual("Bool", self.lv.variables.get("y"))
+
+    def test_variable_type_inference_rexpr(self):
+        self.lv.parse("(x\\landy)")
+        self.assertIn("y", self.lv.variables)
+        self.assertEqual("Bool", self.lv.variables.get("y"))
+
+        self.setUp()
+        self.lv.parse("((z\\lorx)=(z=y))")
+
+        self.assertIn("x", self.lv.variables)
+        self.assertEqual("Bool", self.lv.variables.get("x"))
+        self.assertIn("y", self.lv.variables)
+        self.assertEqual(None, self.lv.variables.get("y"))
+        self.assertIn("z", self.lv.variables)
+        self.assertEqual("Bool", self.lv.variables.get("z"))
+
+    def test_variable_type_inference_ambiguous(self):
+        self.lv.parse("(x=y)")
+        self.assertIn("x", self.lv.variables)
+        self.assertEqual(None, self.lv.variables.get("x"))
+        self.assertIn("y", self.lv.variables)
+        self.assertEqual(None, self.lv.variables.get("x"))

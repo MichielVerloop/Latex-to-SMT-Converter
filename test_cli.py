@@ -27,3 +27,13 @@ class TestCli(TestCase):
         self.assertEqual("(declare-const R Int)\n(declare-const x_1 Int)\n(assert\n(and\n(= x_1 1)))\n(check-sat)\n("
                          "get-model)\n",
                          result.output)
+
+    def test_handle_cli_num_type(self):
+        result = self.runner.invoke(handle_cli, ["(x + y)", "-n", "Real"])
+        self.assertEqual(0, result.exit_code)
+        self.assertIn("Real", result.output)
+
+    def test_handle_cli_default_type(self):
+        result = self.runner.invoke(handle_cli, ["(x = y)", "-d", "Bool"])
+        self.assertEqual(0, result.exit_code)
+        self.assertIn("Bool", result.output)

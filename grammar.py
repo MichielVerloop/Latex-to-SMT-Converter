@@ -61,17 +61,17 @@ class BoolGrammar:
     )
 
     operand_dict = {
-        "not": "\\lnot",
-        "and": "\\land",
-        "or": "\\lor",
-        "=>": "\\to",
-        "<=": "\\leq",
-        ">=": "\\geq",
-        "*": "\\cdot",
-        "distinct": "\\neq",
-        "=": "=",
-        "<": "<",
-        ">": ">",
-        "+": "+",
-        "-": "-"
+        "distinct": ("\\neq", None),
+        "=": ("=", None),
+        "not": ("\\lnot", "Bool"),
+        "and": ("\\land", "Bool"),
+        "or": ("\\lor", "Bool"),
+        "=>": ("\\to", "Bool"),
+        "<=": ("\\leq", "Num"),
+        ">=": ("\\geq", "Num"),
+        "*": ("\\cdot", "Num"),
+        "<": ("<", "Num"),
+        ">": (">", "Num"),
+        "+": ("+", "Num"),
+        "-": ("-", "Num")
     }

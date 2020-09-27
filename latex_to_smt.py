@@ -1,14 +1,15 @@
+from collections import OrderedDict
+
 from parsimonious.nodes import NodeVisitor
 import re
 
-from OrderedSet import OrderedSet
 from grammar import BoolGrammar
 
 
 def main():
     global_vars = get_globals(input("Please enter your globals here:\n"))
     inp = input("formula here:\n")
-    result = convert(inp, global_vars)
+    result = convert(inp, global_vars, "Int", "Int")
     print(result)
 
 
@@ -20,10 +21,12 @@ def clean(inp):
     return inp
 
 
-def convert(inp, global_vars):
+def convert(inp, global_vars, num_type, default_type):
     inp = clean(inp)
     result = ""
     lv = LatexVisitor(global_vars)
+    lv.num_type = num_type
+    lv.default_type = default_type
     parsed = lv.parse(inp)
     result += lv.get_definitions()
     result += "(assert\n"
@@ -157,25 +160,50 @@ class ReducibleVarintVisitor(NodeVisitor):
 class LatexVisitor(NodeVisitor):
 
     def __init__(self, global_vars):
-        self.variables = OrderedSet([])
+        self.variables = OrderedDict()
         self.global_vars = global_vars
         self.grammar = BoolGrammar.latex_grammar
+        self.default_type = "Int"
+        self.num_type = "Int"
+
+    def __update_type__(self, potential_var, operand):
+        operand = operand.strip()
+        if BoolGrammar.operand_dict.get(operand) is None:
+            return
+        if not re.match("[a-z]+(_{[a-z](,[a-z]+)+_})?", potential_var):
+            return
+        operand_type = BoolGrammar.operand_dict.get(operand)[1]
+        if self.variables.get(potential_var) is not None \
+                and operand_type is not None \
+                and not operand_type == self.variables.get(potential_var):
+            raise ValueError("Type " + str(self.variables.get(potential_var)) + " was inferred but type "
+                             + str(operand_type) + " was also inferred.")
+        if potential_var in self.variables and self.variables.get(potential_var) is None:
+            self.variables.update({potential_var: operand_type})
 
     def get_definitions(self):
         result = ""
         for var in self.variables:
-            result += "(declare-const " + var + " Int)\n"
+            var_type = self.variables.get(var)
+            if var_type == "Num":
+                var_type = self.num_type
+            if var_type is None:
+                var_type = self.default_type
+            result += "(declare-const " + var + " " + var_type + ")\n"
         return result
 
     def handle_rexpr(self, operand, visited_children):
         result = ""
         for child in visited_children:
-            replacelimit = child.find("(")
-            if replacelimit == -1:
-                result += child.replace(BoolGrammar.operand_dict.get(operand), " ")
+            replace_limit = child.find("(")
+            if replace_limit == -1:
+                result += child.replace(BoolGrammar.operand_dict.get(operand)[0], " ")
+                self.__update_type__(child.replace(BoolGrammar.operand_dict.get(operand)[0], ""), operand)
             else:
-                result += child[0:replacelimit].replace(BoolGrammar.operand_dict.get(operand), " ") \
-                          + child[replacelimit:]
+                result += child[0:replace_limit].replace(BoolGrammar.operand_dict.get(operand)[0], " ") \
+                          + child[replace_limit:]
+                self.__update_type__(child[0:replace_limit].replace(BoolGrammar.operand_dict.get(operand)[0], ""),
+                                     operand)
         return [operand + " ", result]
 
     def handle_sums(self, operand, visited_children):
@@ -209,21 +237,22 @@ class LatexVisitor(NodeVisitor):
                 result = result[0:result.rfind("_" + localvar) + 1] + str(i)
             result += "\n"
         # Replace the general version of the variables with the non-general version
-        localsetvars = OrderedSet([])
+        localsetvars = OrderedDict()
         for var in self.variables:
+            # It is okay for this not to match on _ + localvar + _ as it will be taken care of in the next section.
             if "_" + localvar in var:
-                localsetvars.add(var)
+                localsetvars.update({var: self.variables.get(var)})
         for var in localsetvars:
-            self.variables.remove(var)
+            self.variables.pop(var)
             for i in range(localvarstart, localvarend):
                 # It is replaced twice to cover all things, else _x_y_ would only match _x_ as it shares the
                 # _ with _y_.
                 newvar = var.replace("_" + localvar + "_", "_" + str(i) + "_") \
-                            .replace("_" + localvar + "_", "_" + str(i) + "_")
+                    .replace("_" + localvar + "_", "_" + str(i) + "_")
                 # To match on the final _var within a variable
                 if newvar.rfind("_" + localvar) + len("_" + localvar) == len(newvar):
                     newvar = newvar[0:newvar.rfind("_" + localvar) + 1] + str(i)
-                self.variables.add(newvar)
+                self.variables.update({newvar: localsetvars.get(var)})
         if add_operand:  # Only add ending brackets if we added an operand
             result += ")"
         else:  # We do not need an extra enter
@@ -259,11 +288,12 @@ class LatexVisitor(NodeVisitor):
 
     def visit_var(self, node, visited_children):
         var = node.text.replace(",", "_").replace("{", "").replace("}", "")
-        self.variables.add(var)
+        if var not in self.variables:
+            self.variables.update({var: None})
         return var
 
     def visit_replaceablevar(self, node, visited_children):
-        self.variables.remove(visited_children[1])
+        self.variables.pop(visited_children[1])
         return visited_children[0] + visited_children[1] + visited_children[2]
 
     def visit_local_var(self, node, visited_children):
@@ -273,8 +303,9 @@ class LatexVisitor(NodeVisitor):
         return visited_children[0]
 
     def visit_nexpr(self, node, visited_children):
-        lbracket, lexpr, rexpr, rbracket = visited_children
-        result = lbracket + str(rexpr[0]) + lexpr + str(rexpr[1]) + rbracket
+        lbracket, lexpr, (operand, rexpr), rbracket = visited_children
+        result = lbracket + str(operand) + lexpr + str(rexpr) + rbracket
+        self.__update_type__(lexpr, operand)
         return result
 
     def visit_rexpr(self, node, visited_children):
