@@ -175,7 +175,7 @@ class LatexVisitor(NodeVisitor):
                 result += child.replace(BoolGrammar.operand_dict.get(operand), " ")
             else:
                 result += child[0:replacelimit].replace(BoolGrammar.operand_dict.get(operand), " ") \
-                      + child[replacelimit:]
+                          + child[replacelimit:]
         return [operand + " ", result]
 
     def handle_sums(self, operand, visited_children):
@@ -216,7 +216,14 @@ class LatexVisitor(NodeVisitor):
         for var in localsetvars:
             self.variables.remove(var)
             for i in range(localvarstart, localvarend):
-                self.variables.add(var.replace("_" + localvar, "_" + str(i)))
+                # It is replaced twice to cover all things, else _x_y_ would only match _x_ as it shares the
+                # _ with _y_.
+                newvar = var.replace("_" + localvar + "_", "_" + str(i) + "_") \
+                            .replace("_" + localvar + "_", "_" + str(i) + "_")
+                # To match on the final _var within a variable
+                if newvar.rfind("_" + localvar) + len("_" + localvar) == len(newvar):
+                    newvar = newvar[0:newvar.rfind("_" + localvar) + 1] + str(i)
+                self.variables.add(newvar)
         if add_operand:  # Only add ending brackets if we added an operand
             result += ")"
         else:  # We do not need an extra enter
@@ -258,6 +265,7 @@ class LatexVisitor(NodeVisitor):
     def visit_replaceablevar(self, node, visited_children):
         self.variables.remove(visited_children[1])
         return visited_children[0] + visited_children[1] + visited_children[2]
+
     def visit_local_var(self, node, visited_children):
         return node.text
 

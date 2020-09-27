@@ -3,7 +3,7 @@ from unittest import TestCase
 
 from parsimonious import VisitationError
 
-from latex_to_smt import LatexVisitor
+from latex_to_smt import LatexVisitor, clean
 
 
 class TestLatexVisitor(TestCase):
@@ -168,7 +168,6 @@ class TestLatexVisitor(TestCase):
 
     def test_visit_rvee(self):
         output = self.lv.parse("\\bigvee_{i,j,k:0\\leqi<j<k<4}x_{i,j,k}")
-        print(output)
         output = output.replace("\n", "").replace("\r\n", "")
         self.assertEqual("(orx_0_1_2x_1_1_2x_0_2_2x_1_2_2x_0_1_3x_1_1_3x_0_2_3x_1_2_3)", output)
 
@@ -180,13 +179,16 @@ class TestLatexVisitor(TestCase):
         self.assertRaisesRegex(VisitationError, ".*ValueError.*", self.lv.parse,
                                "\\bigvee_{i,ii,k,h:0\\leqi<ii<k<4}x_{i,ii}")
 
-    def test_visit_rvee_subset_vars(self):
-        output = self.lv.parse("\\bigvee_{i,iii,ii:0\\leqiii<ii<i<4}x_{i,ii}")
-        print(output)
+    def test_visit_subset_vars(self):
+        self.lv.parse("\\bigvee_{i,iii,ii:0\\leqiii<ii<i<4}x_{i,ii}")
         self.assertGreater(len(self.lv.variables), 0)
         for i in self.lv.variables:
-            print(i)
-            for j in ["xi", "i", "xii", "ixi"]:
+            for j in ["i", "ii", "iii"]:
+                self.assertNotIn(j, i)
+
+        self.lv.parse("\\bigwedge_{hi=0}^{1}\\bigwedge_{h=0}^{1}p_{hi,h}")
+        for i in self.lv.variables:
+            for j in ["hi", "i"]:
                 self.assertNotIn(j, i)
 
     def test_visit_rsum(self):
@@ -217,7 +219,6 @@ class TestLatexVisitor(TestCase):
 
     def test_visit_geq(self):
         List = range(10)
-        print(List[0:])
         output = self.lv.parse("(4\\geqy)")
         self.assertEqual("(>= 4 y)", output)
 
