@@ -17,15 +17,15 @@ class TestCli(TestCase):
     def test_handle_cli_no_globals(self):
         result = self.runner.invoke(handle_cli, ["\\bigwedge_{i:0<i<2}(x_i = 1)"])
         self.assertEqual(0, result.exit_code)
-        self.assertEqual("(declare-const x_1 Int)\n(assert\n(and\n(= x_1 1)))\n(check-sat)\n(get-model)\n",
+        self.assertEqual("(declare-const x_1 Int)\n(assert\n(and\n(=> (distinct 1) (= x_1 1))))\n(check-sat)\n(get-model)\n",
                          result.output)
 
     def test_handle_cli_globals(self):
         result = self.runner.invoke(handle_cli, ["\\bigwedge_{i:0<i<R}(x_i = 1)", "-g", "R = 2"])
         self.assertEqual(0, result.exit_code)
         # TODO actually delete R or fix it to be what it was assigned.
-        self.assertEqual("(declare-const R Int)\n(declare-const x_1 Int)\n(assert\n(and\n(= x_1 1)))\n(check-sat)\n("
-                         "get-model)\n",
+        self.assertEqual("(declare-const R Int)\n(declare-const x_1 Int)\n(assert (= R 2))\n(assert\n(and\n(=> ("
+                         "distinct 1) (= x_1 1))))\n(check-sat)\n(get-model)\n",
                          result.output)
 
     def test_handle_cli_num_type(self):

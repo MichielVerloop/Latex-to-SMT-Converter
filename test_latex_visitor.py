@@ -162,18 +162,25 @@ class TestLatexVisitor(TestCase):
         self.setUp()
         output = self.lv.parse("\\bigwedge_{i,j:0\\leqi<j<3}(x_i\\landx_j)")
         output = output.replace("\n", "").replace("\r\n", "")
-        self.assertEqual("(and(and x_0 x_1)(and x_1 x_1)(and x_0 x_2)(and x_1 x_2))", output)
+        self.assertEqual("(and(=> (distinct 0 1) (and x_0 x_1))(=> (distinct 1 1) (and x_1 x_1))(=> (distinct 0 2) ("
+                         "and x_0 x_2))(=> (distinct 1 2) (and x_1 x_2)))", output)
 
         # Lowup variant with 3 variables
         self.setUp()
         output = self.lv.parse("\\bigwedge_{i,j,k:0\\leqi<j<k<4}x_{i,j,k}")
         output = output.replace("\n", "").replace("\r\n", "")
-        self.assertEqual("(andx_0_1_2x_1_1_2x_0_2_2x_1_2_2x_0_1_3x_1_1_3x_0_2_3x_1_2_3)", output)
+        self.assertEqual("(and(=> (distinct 0 1 2) x_0_1_2)(=> (distinct 1 1 2) x_1_1_2)(=> (distinct 0 2 2) "
+                         "x_0_2_2)(=> (distinct 1 2 2) x_1_2_2)(=> (distinct 0 1 3) x_0_1_3)(=> (distinct 1 1 3) "
+                         "x_1_1_3)(=> (distinct 0 2 3) x_0_2_3)(=> (distinct 1 2 3) x_1_2_3))",
+                         output)
 
     def test_visit_rvee(self):
         output = self.lv.parse("\\bigvee_{i,j,k:0\\leqi<j<k<4}x_{i,j,k}")
         output = output.replace("\n", "").replace("\r\n", "")
-        self.assertEqual("(orx_0_1_2x_1_1_2x_0_2_2x_1_2_2x_0_1_3x_1_1_3x_0_2_3x_1_2_3)", output)
+        self.assertEqual("(or(=> (distinct 0 1 2) x_0_1_2)(=> (distinct 1 1 2) x_1_1_2)(=> (distinct 0 2 2) x_0_2_2)("
+                         "=> (distinct 1 2 2) x_1_2_2)(=> (distinct 0 1 3) x_0_1_3)(=> (distinct 1 1 3) x_1_1_3)(=> ("
+                         "distinct 0 2 3) x_0_2_3)(=> (distinct 1 2 3) x_1_2_3))",
+                         output)
 
     def test_visit_rvee_wrong_inequalities(self):
         self.assertRaisesRegex(VisitationError, ".*ValueError.*", self.lv.parse,
@@ -198,7 +205,10 @@ class TestLatexVisitor(TestCase):
     def test_visit_rsum(self):
         output = self.lv.parse("\\sum_{i,j,k:0\\leqi<j<k<4}x_{i,j,k}")
         output = output.replace("\n", "").replace("\r\n", "")
-        self.assertEqual("(+x_0_1_2x_1_1_2x_0_2_2x_1_2_2x_0_1_3x_1_1_3x_0_2_3x_1_2_3)", output)
+        self.assertEqual("(+(=> (distinct 0 1 2) x_0_1_2)(=> (distinct 1 1 2) x_1_1_2)(=> (distinct 0 2 2) x_0_2_2)("
+                         "=> (distinct 1 2 2) x_1_2_2)(=> (distinct 0 1 3) x_0_1_3)(=> (distinct 1 1 3) x_1_1_3)(=> ("
+                         "distinct 0 2 3) x_0_2_3)(=> (distinct 1 2 3) x_1_2_3))",
+                         output)
 
     def test_visit_and(self):
         output = self.lv.parse("(x\\landy\\landz)")
