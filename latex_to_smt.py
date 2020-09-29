@@ -30,6 +30,7 @@ def convert(inp, global_vars, num_type, default_type):
     lv.default_type = default_type
     parsed = lv.parse(inp)
     result += lv.get_definitions()
+    result += lv.get_globals()
     result += "(assert\n"
     result += parsed
     result += ")\n(check-sat)\n(get-model)"
@@ -127,6 +128,9 @@ class GlobalVisitor(NodeVisitor):
         return node.text
 
     def visit_int(self, node, visited_children):
+        # If there is nothing before the dot, prepend a 0.
+        if node.text.find(".") == 0:
+            return "0" + node.text
         return node.text
 
     def generic_visit(self, node, visited_children):
@@ -149,6 +153,9 @@ class ReducibleVarintVisitor(NodeVisitor):
         return node.text
 
     def visit_int(self, node, visited_children):
+        # If there is nothing before the dot, prepend a 0.
+        if node.text.find(".") == 0:
+            return "0" + node.text
         return node.text
 
     def generic_visit(self, node, visited_children):
@@ -184,6 +191,8 @@ class LatexVisitor(NodeVisitor):
 
     def get_definitions(self):
         result = ""
+        for var in self.global_vars:
+            self.variables.update({var: "Num"})
         for var in self.variables:
             var_type = self.variables.get(var)
             if var_type == "Num":
@@ -191,6 +200,12 @@ class LatexVisitor(NodeVisitor):
             if var_type is None:
                 var_type = self.default_type
             result += "(declare-const " + var + " " + var_type + ")\n"
+        return result
+
+    def get_globals(self):
+        result = ""
+        for i in self.global_vars:
+            result += "(assert (= " + i + " " + str(self.global_vars.get(i)) + "))\n"
         return result
 
     def handle_rexpr(self, operand, visited_children):
@@ -266,6 +281,7 @@ class LatexVisitor(NodeVisitor):
         inequalities = visited_children[1][2]
         maximum = int(visited_children[1][3][0])
         expr = visited_children[3]
+        expr = "(=> (distinct" + "".join([" \markreplaceable{" + i + "}" for i in localvars]) + ") " + expr + ")"
         # The vars with the lowest length are generated first, so the "i" doesn't replace the i in "xi"
         for var in sorted(localvars, key=len, reverse=True):
             if not var in inequalities:
@@ -274,6 +290,7 @@ class LatexVisitor(NodeVisitor):
                                    truemax(var, inequalities, maximum) + 1,  # + 1 is to compensate for the exclusivity
                                    expr)  # of the upper bound
         remaining_vars = [x for x in inequalities if x not in localvars + ["\\leq"] + ["<"]]
+
         if len(remaining_vars) != 0:
             raise ValueError("Found variable(s) " + str(remaining_vars) + " in the inequalities " + str(inequalities)
                              + "that were not introduced in the local variables, " + str(localvars) + ".")
@@ -292,6 +309,12 @@ class LatexVisitor(NodeVisitor):
         if var not in self.variables:
             self.variables.update({var: None})
         return var
+
+    def visit_int(self, node, visited_children):
+        # If there is nothing before the dot, prepend a 0.
+        if node.text.find(".") == 0:
+            return "0" + node.text
+        return node.text
 
     def visit_replaceablevar(self, node, visited_children):
         self.variables.pop(visited_children[1])

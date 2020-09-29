@@ -51,7 +51,7 @@ class BoolGrammar:
     int         = (~"[0-9]"* ".")? ~"[0-9]"+  
     """
     )
-    
+
     # TODO: update this with the "num" definition rather than int.
     reducible_varint_grammar = Grammar(
         """

@@ -58,6 +58,9 @@ class TestLatexVisitor(TestCase):
         output = self.lv.parse("0")
         self.assertEqual("0", output)
 
+        output = self.lv.parse(".5")
+        self.assertEqual("0.5", output)
+
     # TODO: implement reals
     # def test_visit_int_realint(self):
     #     output = self.lv.parse("0.1")
