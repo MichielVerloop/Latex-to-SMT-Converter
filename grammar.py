@@ -20,7 +20,7 @@ class BoolGrammar:
     lowup           = localvar (","localvar)* ":" reduciblevarint ("\\\\leq" / "<") (localvar ("\\\\leq" / "<"))+ reduciblevarint
     reduciblevarint = (var / int) (("+" / "-") (var / int))*
     varint          = (var / replaceablevar / int)
-    int             = ~"[0-9]"+
+    int             = (~"[0-9]"* ".")? ~"[0-9]"+
     localvar        = ~"[a-z_]+"i
     replaceablevar  = "\\\\markreplaceable{" var "}"
     var             = (string "_{" (string/int) ("," (string/int))* "}") / (string "_" (string/int)) / (string) 
@@ -48,10 +48,11 @@ class BoolGrammar:
     pmvarint    = ("+" / "-") (var / int)
     var         = (string "_{" (string/int) ("," (string/int))* "}") / (string "_" (string/int)) / (string) 
     string      = ~"[a-z]+"i
-    int         = ~"[0-9]"+
+    int         = (~"[0-9]"* ".")? ~"[0-9]"+  
     """
     )
-
+    
+    # TODO: update this with the "num" definition rather than int.
     reducible_varint_grammar = Grammar(
         """
     varint      = (var / int) (pmvarint)*
