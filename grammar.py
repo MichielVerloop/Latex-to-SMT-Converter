@@ -45,8 +45,9 @@ class BoolGrammar:
     assignments = equals ("," equals)*
     equals      = var "=" varint
     varint      = (var / int) (pmvarint)*
-    pmvarint       = ("+" / "-") (var / int)
-    var         = ~"[a-z_]+"i
+    pmvarint    = ("+" / "-") (var / int)
+    var         = (string "_{" (string/int) ("," (string/int))* "}") / (string "_" (string/int)) / (string) 
+    string      = ~"[a-z]+"i
     int         = ~"[0-9]"+
     """
     )

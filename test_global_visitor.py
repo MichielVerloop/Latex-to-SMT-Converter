@@ -15,4 +15,8 @@ class TestGlobalVisitor(TestCase):
         output = self.gv.parse("x=1+1-1,y=x+3")
         self.assertEqual({"x": 1, "y": 4}, output)
 
+    def test_underscores(self):
+        output = self.gv.parse("abcidjk_0=3")
+        self.assertEqual({"abcidjk_0": 3}, output)
+
     #TODO: test cases for failures

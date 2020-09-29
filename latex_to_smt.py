@@ -18,6 +18,7 @@ def clean(inp):
     inp = inp.replace("\\,", "")
     inp = inp.replace("&", "")
     inp = inp.replace("\\\\", "")
+    inp = inp.replace("\\_", "")
     return inp
 
 
