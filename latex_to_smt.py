@@ -358,6 +358,8 @@ class LatexVisitor(NodeVisitor):
 
     def visit_replaceablevar(self, node, visited_children):
         self.variables.pop(visited_children[1])
+        if visited_children[1] in self.global_vars:
+            return self.global_vars.get(visited_children[1])
         return visited_children[0] + visited_children[1] + visited_children[2]
 
     def visit_local_var(self, node, visited_children):
