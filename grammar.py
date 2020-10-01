@@ -23,7 +23,8 @@ class BoolGrammar:
     int             = (~"[0-9]"* ".")? ~"[0-9]"+
     localvar        = ~"[a-z_]+"i
     replaceablevar  = "\\\\markreplaceable{" var "}"
-    var             = (string "_{" (string/int) ("," (string/int))* "}") / (string "_" (string/int)) / (string) 
+    var             = (string "_{" substring ("," substring)* "}") / (string "_" (string/int)) / (string)
+    substring       = (string / int) (("+" / "-") (string / int))* 
     string          = ~"[a-z]+"i
     and             = ("\\\\land" expr)+
     or              = ("\\\\lor" expr)+
@@ -42,23 +43,26 @@ class BoolGrammar:
 
     global_grammar = Grammar(
         """
-    assignments = equals ("," equals)*
-    equals      = var "=" varint
-    varint      = (var / int) (pmvarint)*
-    pmvarint    = ("+" / "-") (var / int)
-    var         = (string "_{" (string/int) ("," (string/int))* "}") / (string "_" (string/int)) / (string) 
-    string      = ~"[a-z]+"i
-    int         = (~"[0-9]"* ".")? ~"[0-9]"+  
+    assignments     = equals ("," equals)*
+    equals          = var "=" varint
+    varint          = (var / int) (pmvarint)*
+    pmvarint        = ("+" / "-") (var / int)
+    var             = (string "_{" substring ("," substring)* "}") / (string "_" (string/int)) / (string)
+    substring       = (string / int) (("+" / "-") (string / int))* 
+    string          = ~"[a-z]+"i
+    int             = (~"[0-9]"* ".")? ~"[0-9]"+  
     """
     )
 
     # TODO: update this with the "num" definition rather than int.
     reducible_varint_grammar = Grammar(
         """
-    varint      = (var / int) (pmvarint)*
-    pmvarint       = ("+" / "-") (var / int)
-    var         = ~"[a-z_]+"i
-    int         = ~"[0-9]"+
+    varint          = (var / int) (pmvarint)*
+    pmvarint        = ("+" / "-") (var / int)
+    var             = (string "_{" substring ("," substring)* "}") / (string "_" (string/int)) / (string)
+    substring       = (string / int) (("+" / "-") (string / int))* 
+    string          = ~"[a-z]+"i
+    int             = (~"[0-9]"* ".")? ~"[0-9]"+
     """
     )
 

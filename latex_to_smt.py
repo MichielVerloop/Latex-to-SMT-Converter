@@ -1,7 +1,8 @@
 from collections import OrderedDict
 
 from parsimonious.nodes import NodeVisitor
-import re
+import re       # Less powerful but default regex engine, with regex highlighting
+import regex    # Used for special settings, but loses nice regex highlighting
 
 from grammar import BoolGrammar
 
@@ -50,37 +51,63 @@ def flatten(l):
     return [item for sublist in l for item in sublist]
 
 
-def resolve_global_or_int(global_vars, varint):
-    if varint in global_vars:
-        return global_vars.get(varint)
-    try:
-        return int(varint)
-    except ValueError:
-        return float(varint)
+def reduce(floats):
+    # Takes a list of an even length of the form [operator, num, operator, num, etc.] and computes the result.
+    if len(floats) == 0:
+        return 0
 
-
-def resolve(global_vars, varint):
-    if len(varint) == 1:
-        return resolve_global_or_int(global_vars, varint[0])
-    new_varint = [varint[0]]
-    for i in range(1, len(varint)):
-        new_varint += [varint[i][0]] + [varint[i][1]]
-    varint = new_varint
-    # else
-    while len(varint) != 1:
+    result = 0
+    while len(floats) != 0:
         shortened = 0
         # TODO: Figure out how to nicely rethrow an error from a failed int(var)
-        int1 = resolve_global_or_int(global_vars, varint[0])
-        int2 = resolve_global_or_int(global_vars, varint[2])
-        if varint[1] == "+":
-            shortened = int1 + int2
-        elif varint[1] == "-":
-            shortened = int1 - int2
+        operator = floats[0]
+        num = floats[1]
+        result += num if operator == "+" else -num
+        floats = floats[2:]
+    return result
 
-        del varint[0]
-        del varint[0]
-        varint[0] = shortened
-    return varint[0]
+
+def resolve(known_vars, varint):
+    if len(varint) == 1 or len(varint[0]) == 1:  # Ensure the first argument has an operator.
+        varint[0] = ["+", varint[0]]
+    # Replace variables with their integer value if possible.
+    vars_ = ""
+    nums = []
+    for i in range(len(varint)):
+        sub_var = varint[i][1]
+        if sub_var in known_vars:
+            replacevar = str(known_vars.get(sub_var))
+            hasminus = replacevar[0] == "-"
+            if hasminus:
+                if varint[i][0] == "+":
+                    varint[i] = ["-", replacevar[1:]]
+                else:
+                    varint[i][1] = replacevar[1:]
+            else:
+                varint[i][1] = replacevar
+        if re.match("[+-]*([0-9]+\\.)?[0-9]+", str(varint[i][1])):
+            nums += (varint[i][0], float(varint[i][1]))
+        else:
+            vars_ += varint[i][0] + str(varint[i][1])
+    if nums == "":
+        if len(vars_) > 0 and vars_[0] == "+":
+            vars_ = vars_[1:]
+        return vars_
+    reduced_num = reduce(nums)
+    # Handle small formatting crap
+    if int(reduced_num) == reduced_num:
+        reduced_num = str(int(reduced_num))
+    else:
+        reduced_num = str(reduced_num)
+
+    if len(vars_) > 0:
+        if vars_[0] == "+":
+            vars_ = vars_[1:]
+        if not reduced_num[0] == "-":
+            reduced_num = "+" + reduced_num
+        if reduced_num == "+0":
+            reduced_num = ""
+    return vars_ + reduced_num
 
 
 def truemin(var, inequalities, minimum):
@@ -189,6 +216,37 @@ class LatexVisitor(NodeVisitor):
         if potential_var in self.variables and self.variables.get(potential_var) is None:
             self.variables.update({potential_var: operand_type})
 
+    def __substitute__(self, expr, localvar, value):
+        # Copy dict and add localvar:value to it.
+        known_vars = self.global_vars.copy()
+        known_vars.update({localvar: value})
+        # Match all subvars
+
+        it = regex.finditer("_([a-z0-9]+([+-][a-z0-9]+)*)([_)\n ]|$)", expr, re.IGNORECASE, overlapped=True)
+
+        # Split up all subvars so they can be resolved by resolve.
+        locations = []
+        reduced_vars = []
+        for i in it:
+            location = i.span()
+            front = "_"
+            subvar, _, end = i.groups()
+            subvar = re.split("([+-])", subvar)
+            subvar = [subvar[0]] + [subvar[1:][j*2:j*2+2] for j in range(int(len(subvar[1:])/2))]
+            locations.append(location)
+            middle = resolve(known_vars, subvar)
+            reduced_vars.append(front + middle + end)
+        # In reverse (so locations stay relevant), replace the parts of the string where necessary.
+        assert len(locations) == len(reduced_vars)
+        for i in range(len(locations))[::-1]:
+            expr = expr[:locations[i][0]] + reduced_vars[i] + expr[locations[i][1]:]
+        # Edge case that doesn't need all the crap above.
+        expr = expr.replace("\\markreplaceable{" + localvar + "}", str(value))
+
+        return expr
+
+
+
     def get_definitions(self):
         result = ""
         for var in self.global_vars:
@@ -239,19 +297,7 @@ class LatexVisitor(NodeVisitor):
         for i in range(localvarstart, localvarend):
             # Because we match on adjacent underscores, we need to do two passes.
             # Only in the second one we add it to the result
-            subresult = expr.replace("_" + localvar + "_", "_" + str(i) + "_") \
-                .replace("_" + localvar + "\n", "_" + str(i) + "\n") \
-                .replace("_" + localvar + " ", "_" + str(i) + " ") \
-                .replace("_" + localvar + ")", "_" + str(i) + ")") \
-                .replace("\\markreplaceable{" + localvar + "}", str(i))
-            result += subresult.replace("_" + localvar + "_", "_" + str(i) + "_") \
-                .replace("_" + localvar + "\n", "_" + str(i) + "\n") \
-                .replace("_" + localvar + " ", "_" + str(i) + " ") \
-                .replace("_" + localvar + ")", "_" + str(i) + ")")
-            # Find variables at the end of the string and replace them
-            if result.rfind("_" + localvar) + len("_" + localvar) == len(result):
-                result = result[0:result.rfind("_" + localvar) + 1] + str(i)
-            result += "\n"
+            result += self.__substitute__(expr, localvar, i) + "\n"
         # Replace the general version of the variables with the non-general version
         localsetvars = OrderedDict()
         for var in self.variables:
@@ -261,13 +307,7 @@ class LatexVisitor(NodeVisitor):
         for var in localsetvars:
             self.variables.pop(var)
             for i in range(localvarstart, localvarend):
-                # It is replaced twice to cover all things, else _x_y_ would only match _x_ as it shares the
-                # _ with _y_.
-                newvar = var.replace("_" + localvar + "_", "_" + str(i) + "_") \
-                    .replace("_" + localvar + "_", "_" + str(i) + "_")
-                # To match on the final _var within a variable
-                if newvar.rfind("_" + localvar) + len("_" + localvar) == len(newvar):
-                    newvar = newvar[0:newvar.rfind("_" + localvar) + 1] + str(i)
+                newvar = self.__substitute__(var, localvar, i)
                 self.variables.update({newvar: localsetvars.get(var)})
         if add_operand:  # Only add ending brackets if we added an operand
             result += ")"

@@ -13,7 +13,6 @@ class TestLatexVisitor(TestCase):
     def test_get_definitions(self):
         output = self.lv.parse("(x\\landy)")
         output = self.lv.get_definitions() + output
-        print(output)
         success = "(declare-const x Bool)\n(declare-const y Bool)\n(and x y)" == output \
                   or "(declare-const y Bool)\n(declare-const x Bool)\n(and x y)" == output
         self.assertEqual(True, success)
@@ -201,6 +200,11 @@ class TestLatexVisitor(TestCase):
         for i in self.lv.variables:
             for j in ["hi", "i"]:
                 self.assertNotIn(j, i)
+
+    def test_visit_substring_vars(self):
+        output = self.lv.parse("\\bigwedge_{i=0}^{2}a_{i+1+1}")
+        output = output.replace("\n", "").replace("\r\n", "")
+        self.assertEqual("(anda_2a_3)", output)
 
     def test_visit_rsum(self):
         output = self.lv.parse("\\sum_{i,j,k:0\\leqi<j<k<4}x_{i,j,k}")

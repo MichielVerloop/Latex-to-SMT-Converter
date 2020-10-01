@@ -9,23 +9,22 @@ class TestReducibleVarintVisitor(TestCase):
 
     def test_visit_varint_int(self):
         output = self.trvv.parse("1")
-        self.assertEqual(1, output)
+        self.assertEqual("1", output)
 
-    # TODO: implement reals
-    # def test_visit_varint_real(self):
-    #     output = self.trvv.parse("1+1")
-    #     self.assertEqual("1.1")
+    def test_visit_varint_real(self):
+        output = self.trvv.parse("1+0.1")
+        self.assertEqual("1.1", output)
 
 
     def test_visit_varint_var(self):
         output = self.trvv.parse("x")
-        self.assertEqual(1, output)
+        self.assertEqual("1", output)
 
     def test_visit_long_varint(self):
         output = self.trvv.parse("long")
-        self.assertEqual(-3, output)
+        self.assertEqual("-3", output)
 
     def test_visit_varint_combined(self):
         output = self.trvv.parse("x+y-1+long")
-        self.assertEqual(2, output)
+        self.assertEqual("2", output)
 
