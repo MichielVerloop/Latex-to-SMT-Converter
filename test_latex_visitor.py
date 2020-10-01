@@ -145,15 +145,6 @@ class TestLatexVisitor(TestCase):
         self.assertEqual("(or012)", output)
         self.assertNotIn("i", self.lv.variables)
 
-    def test_visit_replaceable_var(self):
-        self.lv.global_vars = {"n": -3}
-        output = self.lv.parse("\\markreplaceable{n}")
-        self.assertEqual("-3", output)
-
-        self.lv.global_vars = {"n": "-3"}
-        output = self.lv.parse("\\markreplaceable{n}")
-        self.assertEqual("-3", output)
-
     def test_visit_sum(self):
         output = self.lv.parse("\\sum_{i=1}^{3}(x_i-3)")
         output = output.replace("\n", "").replace("\r\n", "")
