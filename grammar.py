@@ -32,13 +32,13 @@ class BoolGrammar:
     equals          = ("=" expr)+
     neq             = ("\\\\neq" expr)+
     not             = "\\\\lnot" expr
-    le              = "<" expr
-    leq             = "\\\\leq" expr
-    ge              = ">" expr
-    geq             = "\\\\geq" expr
-    plus            = "+" expr
-    minus           = "-" expr
-    times           = "\\\\cdot" expr 
+    le              = ("<" expr)+
+    leq             = ("\\\\leq" expr)+
+    ge              = (">" expr)+
+    geq             = ("\\\\geq" expr)+
+    plus            = ("+" expr)+
+    minus           = ("-" expr)+
+    times           = ("\\\\cdot" expr)+ 
     """)
 
     global_grammar = Grammar(
