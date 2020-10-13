@@ -242,7 +242,6 @@ class LatexVisitor(NodeVisitor):
             expr = expr[:locations[i][0]] + reduced_vars[i] + expr[locations[i][1]:]
         # Edge case that doesn't need all the crap above.
         expr = expr.replace("\\markreplaceable{" + localvar + "}", str(value))
-
         return expr
 
 
@@ -409,6 +408,7 @@ class LatexVisitor(NodeVisitor):
         return self.handle_rsum("+", visited_children)
 
     def visit_not(self, node, visited_children):
+        self.__update_type__(visited_children[1], "not")
         return "(not " + visited_children[1] + ")"
 
     def visit_neq(self, node, visited_children):

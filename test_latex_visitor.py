@@ -247,6 +247,7 @@ class TestLatexVisitor(TestCase):
     def test_visit_not(self):
         output = self.lv.parse("\\lnotx")
         self.assertEqual("(not x)", output)
+        self.assertEqual({"x": "Bool"}, self.lv.variables)
 
         self.setUp()
         output = self.lv.parse("\\lnot(x\\landy)")
