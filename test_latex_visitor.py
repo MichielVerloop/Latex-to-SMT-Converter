@@ -4,7 +4,7 @@ from unittest import TestCase
 from parsimonious import VisitationError
 
 from latex_to_smt import LatexVisitor, clean
-
+from inferred_types import *
 
 class TestLatexVisitor(TestCase):
     def setUp(self):
@@ -25,40 +25,40 @@ class TestLatexVisitor(TestCase):
         self.assertEqual("3", output)
 
     def test_visit_var(self):
-        output = self.lv.parse("x")
-        self.assertEqual("x", output)
+        output = self.lv.parse("x", hide_type=False)
+        self.assertEqual(("x", unknown), output)
 
         # With _
         self.setUp()
-        output = self.lv.parse("x_i")
-        self.assertEqual("x_i", output)
+        output = self.lv.parse("x_i", hide_type=False)
+        self.assertEqual(("x_i", unknown), output)
 
         # With _{x}
         self.setUp()
-        output = self.lv.parse("x_{i}")
-        self.assertEqual("x_i", output)
+        output = self.lv.parse("x_{i}", hide_type=False)
+        self.assertEqual(("x_i", unknown), output)
 
         # With _{x,y}
         self.setUp()
-        output = self.lv.parse("x_{y,z}")
-        self.assertEqual("x_y_z", output)
+        output = self.lv.parse("x_{y,z}", hide_type=False)
+        self.assertEqual(("x_y_z", unknown), output)
 
         # With _0
         self.setUp()
-        output = self.lv.parse("x_0")
-        self.assertEqual("x_0", output)
+        output = self.lv.parse("x_0", hide_type=False)
+        self.assertEqual(("x_0", unknown), output)
 
         # With _{y,0,86,z}
         self.setUp()
-        output = self.lv.parse("x_{y,0,86,z}")
-        self.assertEqual("x_y_0_86_z", output)
+        output = self.lv.parse("x_{y,0,86,z}", hide_type=False)
+        self.assertEqual(("x_y_0_86_z", unknown), output)
 
     def test_visit_int(self):
-        output = self.lv.parse("0")
-        self.assertEqual("0", output)
+        output = self.lv.parse("10", hide_type=False)
+        self.assertEqual(("10", num), output)
 
-        output = self.lv.parse(".5")
-        self.assertEqual("0.5", output)
+        output = self.lv.parse(".5542", hide_type=False)
+        self.assertEqual(("0.5542", real), output)
 
     # TODO: implement reals
     # def test_visit_int_realint(self):
@@ -156,14 +156,14 @@ class TestLatexVisitor(TestCase):
         output = self.lv.parse("\\bigwedge_{i:0\\leqi<3}x_i")
         output_normal_wedge = output_normal_wedge.replace("\n", "").replace("\r\n", "")
         output = output.replace("\n", "").replace("\r\n", "")
-
+        print("HENK")
         # Lowup variant with 2 variables
         self.setUp()
         output = self.lv.parse("\\bigwedge_{i,j:0\\leqi<j<3}(x_i\\landx_j)")
         output = output.replace("\n", "").replace("\r\n", "")
         self.assertEqual("(and(=> (distinct 0 1) (and x_0 x_1))(=> (distinct 1 1) (and x_1 x_1))(=> (distinct 0 2) ("
                          "and x_0 x_2))(=> (distinct 1 2) (and x_1 x_2)))", output)
-
+        print("ARNOLD")
         # Lowup variant with 3 variables
         self.setUp()
         output = self.lv.parse("\\bigwedge_{i,j,k:0\\leqi<j<k<4}x_{i,j,k}")
@@ -172,6 +172,21 @@ class TestLatexVisitor(TestCase):
                          "x_0_2_2)(=> (distinct 1 2 2) x_1_2_2)(=> (distinct 0 1 3) x_0_1_3)(=> (distinct 1 1 3) "
                          "x_1_1_3)(=> (distinct 0 2 3) x_0_2_3)(=> (distinct 1 2 3) x_1_2_3))",
                          output)
+
+    def test_visit_indirect_type_inference(self):
+        # Num
+        output = self.lv.parse("(a=1)")
+        self.assertEqual("Num", self.lv.variables.get("a"))
+
+        self.setUp()
+        # Real
+        output = self.lv.parse("(a=1.1)")
+        self.assertEqual("Real", self.lv.variables.get("a"))
+
+        self.setUp()
+        # Complex
+        output = self.lv.parse("(b=(c\\landd))")
+        self.assertEqual(OrderedDict([('b', 'Bool'), ('c', 'Bool'), ('d', 'Bool')]), self.lv.variables)
 
     def test_visit_rvee(self):
         output = self.lv.parse("\\bigvee_{i,j,k:0\\leqi<j<k<4}x_{i,j,k}")
@@ -215,8 +230,11 @@ class TestLatexVisitor(TestCase):
                          output)
 
     def test_visit_and(self):
-        output = self.lv.parse("(x\\landy\\landz)")
-        self.assertEqual("(and x y z)", output)
+        output = self.lv.parse("(x\\landy)", hide_type=False)
+        self.assertEqual(("(and x y)", boolean), output)
+
+        output = self.lv.parse("(x\\landy\\landz)", hide_type=False)
+        self.assertEqual(("(and x y z)", boolean), output)
 
         output = self.lv.parse("(x\\land(y\\landz))")
         self.assertEqual("(and x (and y z))", output)

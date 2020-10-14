@@ -1,8 +1,8 @@
 from collections import OrderedDict
-
+from inferred_types import *
 from parsimonious.nodes import NodeVisitor
-import re       # Less powerful but default regex engine, with regex highlighting
-import regex    # Used for special settings, but loses nice regex highlighting
+import re  # Less powerful but default regex engine, with regex highlighting
+import regex  # Used for special settings, but loses nice regex highlighting
 
 from grammar import BoolGrammar
 
@@ -201,20 +201,23 @@ class LatexVisitor(NodeVisitor):
         self.default_type = "Int"
         self.num_type = "Int"
 
-    def __update_type__(self, potential_var, operand):
-        operand = operand.strip()
-        if BoolGrammar.operand_dict.get(operand) is None:
-            return
+    def parse(self, text, pos=0, hide_type=True):
+        if hide_type:  # We only want the parsed string
+            return super().parse(text, pos)[0]
+        else:  # We also want the type
+            return super().parse(text, pos)
+
+    def __update_type__(self, potential_var, arg_type):
+        if arg_type == unknown:
+            return  # Default; type would already be set to this.
         if not re.match("[a-z]+(_{[a-z](,[a-z]+)+_})?", potential_var):
             return
-        operand_type = BoolGrammar.operand_dict.get(operand)[1]
         if self.variables.get(potential_var) is not None \
-                and operand_type is not None \
-                and not operand_type == self.variables.get(potential_var):
+                and not arg_type == self.variables.get(potential_var):
             raise ValueError("Type " + str(self.variables.get(potential_var)) + " was inferred but type "
-                             + str(operand_type) + " was also inferred.")
+                             + arg_type + " was also inferred.")
         if potential_var in self.variables and self.variables.get(potential_var) is None:
-            self.variables.update({potential_var: operand_type})
+            self.variables.update({potential_var: arg_type})
 
     def __substitute__(self, expr, localvar, value):
         # Copy dict and add localvar:value to it.
@@ -232,7 +235,7 @@ class LatexVisitor(NodeVisitor):
             front = "_"
             subvar, _, end = i.groups()
             subvar = re.split("([+-])", subvar)
-            subvar = [subvar[0]] + [subvar[1:][j*2:j*2+2] for j in range(int(len(subvar[1:])/2))]
+            subvar = [subvar[0]] + [subvar[1:][j * 2:j * 2 + 2] for j in range(int(len(subvar[1:]) / 2))]
             locations.append(location)
             middle = resolve(known_vars, subvar)
             reduced_vars.append(front + middle + end)
@@ -243,8 +246,6 @@ class LatexVisitor(NodeVisitor):
         # Edge case that doesn't need all the crap above.
         expr = expr.replace("\\markreplaceable{" + localvar + "}", str(value))
         return expr
-
-
 
     def get_definitions(self):
         result = ""
@@ -265,33 +266,24 @@ class LatexVisitor(NodeVisitor):
             result += "(assert (= " + i + " " + str(self.global_vars.get(i)) + "))\n"
         return result
 
-    def handle_rexpr(self, operand, visited_children):
-        result = ""
-        for child in visited_children:
-            replace_limit = child.find("(")
-            if replace_limit == -1:
-                result += child.replace(BoolGrammar.operand_dict.get(operand)[0], " ")
-                self.__update_type__(child.replace(BoolGrammar.operand_dict.get(operand)[0], ""), operand)
-            else:
-                result += child[0:replace_limit].replace(BoolGrammar.operand_dict.get(operand)[0], " ") \
-                          + child[replace_limit:]
-                self.__update_type__(child[0:replace_limit].replace(BoolGrammar.operand_dict.get(operand)[0], ""),
-                                     operand)
-        return [operand + " ", result]
-
     def handle_sums(self, operand, visited_children):
+        # _, (localvar, localvarstart), _, _, localvarend, (expr, typ) = visited_children
+        # print(localvar + str(localvarstart))
         localvar = visited_children[1][0]
         localvarstart = int(visited_children[1][1])
         localvarend = int(visited_children[4])
-        expr = visited_children[6]
-        return self.handle_sum(operand, localvar, localvarstart, localvarend, expr)
+        expr, typ = visited_children[6]
+        return self.handle_sum(operand, localvar, localvarstart, localvarend, expr),\
+               BoolGrammar.inverse_operand_dict.get(operand)[2]
 
     def handle_sum(self, operand, localvar, localvarstart, localvarend, expr):
-        add_operand = operand != ""
+        known_operand = operand in BoolGrammar.inverse_operand_dict
+        if known_operand:
+            operand = BoolGrammar.inverse_operand_dict.get(operand)[0]
         result = ""
-        if add_operand:  # Only add an operand if we have an operand to add
+        if known_operand:  # No need to add an operand or braces if the operands repeat.
             result += "(" + operand + "\n"
-        # TODO: case lowup
+
         # substitute the variable in the expression
         for i in range(localvarstart, localvarend):
             # Because we match on adjacent underscores, we need to do two passes.
@@ -308,18 +300,19 @@ class LatexVisitor(NodeVisitor):
             for i in range(localvarstart, localvarend):
                 newvar = self.__substitute__(var, localvar, i)
                 self.variables.update({newvar: localsetvars.get(var)})
-        if add_operand:  # Only add ending brackets if we added an operand
+        if known_operand:  # Only add ending brackets if we added an operand
             result += ")"
         else:  # We do not need an extra enter
             result = result.rstrip()
         return result
 
     def handle_rsum(self, operand, visited_children):
+        operand, arg_type, res_type = BoolGrammar.inverse_operand_dict.get(operand)
         localvars = visited_children[1][0]
         minimum = int(visited_children[1][1][0])
         inequalities = visited_children[1][2]
         maximum = int(visited_children[1][3][0])
-        expr = visited_children[3]
+        expr, typ = visited_children[3]
         expr = "(=> (distinct" + "".join([" \markreplaceable{" + i + "}" for i in localvars]) + ") " + expr + ")"
         # The vars with the lowest length are generated first, so the "i" doesn't replace the i in "xi"
         for var in sorted(localvars, key=len, reverse=True):
@@ -334,12 +327,13 @@ class LatexVisitor(NodeVisitor):
             raise ValueError("Found variable(s) " + str(remaining_vars) + " in the inequalities " + str(inequalities)
                              + "that were not introduced in the local variables, " + str(localvars) + ".")
         result = "(" + operand + "\n" + expr + ")"
-        return result
+        return result, res_type
 
-    def visit_reduciblevarint(self, node, visited_children):
-        strung_together = ""
-        for child in visited_children:
-            strung_together += str(child)
+    def visit_reduciblevarint(self, _, visited_children):
+        strung_together = visited_children[0][0]
+        if not (len(visited_children) == 2 and visited_children[1] == ''):
+            for operand, (varint, _) in visited_children[1:]:
+                strung_together += str(operand) + str(varint)
         result = ReducibleVarintVisitor(self.global_vars).parse(strung_together)
         return str(result)
 
@@ -347,111 +341,129 @@ class LatexVisitor(NodeVisitor):
         var = node.text.replace(",", "_").replace("{", "").replace("}", "")
         if var not in self.variables:
             self.variables.update({var: None})
-        return var
+        return var, unknown
 
-    def visit_int(self, node, visited_children):
+    def visit_int(self, node, _):
         # If there is nothing before the dot, prepend a 0.
         if node.text.find(".") == 0:
-            return "0" + node.text
-        return node.text
+            return "0" + node.text, real
+        return node.text, real if "." in node.text else num
 
-    def visit_replaceablevar(self, node, visited_children):
-        self.variables.pop(visited_children[1])
-        return visited_children[0] + visited_children[1] + visited_children[2]
-
-    def visit_local_var(self, node, visited_children):
-        return node.text
-
-    def visit_expr(self, node, visited_children):
+    def visit_varint(self, _, visited_children):
         return visited_children[0]
 
-    def visit_nexpr(self, node, visited_children):
-        lbracket, lexpr, (operand, rexpr), rbracket = visited_children
-        result = lbracket + str(operand) + lexpr + str(rexpr) + rbracket
-        self.__update_type__(lexpr, operand)
+    def visit_replaceablevar(self, _, visited_children):
+        markreplaceable, (expr, typ), rbrace = visited_children
+        self.variables.pop(expr)
+        return markreplaceable + expr + rbrace, typ
+
+    def visit_localvars(self, _, visited_children):
+        if "" in visited_children[1]:  # Case only 1 localvar
+            visited_children.remove("")
+            result = [visited_children[0]]
+        else:
+            if isinstance(visited_children[1][1], str):  # Case 2 local vars, bleeds into 3+ cases
+                visited_children[1] = [visited_children[1]]
+            # Case 3+ local vars
+            result = [visited_children[0]] + [i[1] for i in visited_children[1]]
         return result
 
-    def visit_rexpr(self, node, visited_children):
+    def visit_expr(self, _, visited_children):
         return visited_children[0]
 
-    def visit_lower(self, node, visited_children):
+    def visit_nexpr(self, _, visited_children):
+        lbracket, (lexpr, ltype), rexpr, rbracket = visited_children
+        operand, arg_type, res_type = BoolGrammar.inverse_operand_dict.get(rexpr[0][0])
+        # If the type of the arguments cannot be inferred from the operator, check whether any of the arguments
+        # have a type that can be used.
+        arg_type = arg_type or strictest_types([ltype] + [rtype for _, (_, rtype) in rexpr])
+        # Then, update the types using arg_type for all arguments:
+        [self.__update_type__(subexpr, arg_type) for _, (subexpr, _) in rexpr]
+        self.__update_type__(lexpr, arg_type)
+
+        # Create the resulting expression
+        expr = operand + " " + lexpr + "".join([" " + subexpr for _, (subexpr, _) in rexpr])
+        result = lbracket + expr + rbracket
+        return result, res_type
+
+    def visit_lower(self, _, visited_children):
         return [visited_children[0], visited_children[2]]
 
-    def visit_lowup(self, node, visited_children):
-        localvars = [visited_children[0]] + visited_children[1].split(",")
-        localvars.remove("")
-        minimum = [visited_children[3]]
-        inequalities = [visited_children[4]] + re.split("(\\\\leq|<)", visited_children[5])
-        inequalities.remove("")
-        maximum = [visited_children[6]]
+    def visit_lowup(self, _, visited_children):
+        localvars = visited_children[0]
+        minimum = [visited_children[2]]
+        inequalities = [visited_children[3]] + [i for j in visited_children[4] for i in j]  # Flatten
+        maximum = [visited_children[5]]
         return [localvars] + [minimum] + [inequalities] + [maximum]
 
-    def visit_ite(self, node, visited_children):
-        return "(ite " + visited_children[1] + " " + visited_children[3] + " " + visited_children[5] + ")"
+    def visit_ite(self, _, visited_children):
+        _, condition, _, then, _, else_ = visited_children
+        return "(ite " + condition[0] + " " + then[0] + " " + else_[0] + ")", strictest_types([then[1], else_[1]])
 
-    def visit_wedge(self, node, visited_children):
-        return self.handle_sums("and", visited_children)
+    def visit_wedge(self, _, visited_children):
+        return self.handle_sums("\\bigwedge", visited_children)
 
-    def visit_vee(self, node, visited_children):
-        return self.handle_sums("or", visited_children)
+    def visit_vee(self, _, visited_children):
+        return self.handle_sums("\\bigvee", visited_children)
 
-    def visit_sum(self, node, visited_children):
-        return self.handle_sums("+", visited_children)
+    def visit_sum(self, _, visited_children):
+        return self.handle_sums("\\sum", visited_children)
 
-    def visit_rwedge(self, node, visited_children):
-        return self.handle_rsum("and", visited_children)
+    def visit_rwedge(self, _, visited_children):
+        return self.handle_rsum("\\bigwedge", visited_children)
 
-    def visit_rvee(self, node, visited_children):
-        return self.handle_rsum("or", visited_children)
+    def visit_rvee(self, _, visited_children):
+        return self.handle_rsum("\\bigvee", visited_children)
 
-    def visit_rsum(self, node, visited_children):
-        return self.handle_rsum("+", visited_children)
+    def visit_rsum(self, _, visited_children):
+        return self.handle_rsum("\\sum", visited_children)
 
-    def visit_not(self, node, visited_children):
-        self.__update_type__(visited_children[1], "not")
-        return "(not " + visited_children[1] + ")"
+    def visit_not(self, _, visited_children):
+        operand, (subexpr, _) = visited_children
+        self.__update_type__(subexpr, boolean)
+        return "(not " + subexpr + ")", boolean
 
-    def visit_neq(self, node, visited_children):
-        return self.handle_rexpr("distinct", visited_children)
+    def visit_neq(self, _, visited_children):
+        return visited_children
 
-    def visit_and(self, node, visited_children):
-        return self.handle_rexpr("and", visited_children)
+    def visit_and(self, _, visited_children):
+        return visited_children
 
-    def visit_or(self, node, visited_children):
-        return self.handle_rexpr("or", visited_children)
+    def visit_or(self, _, visited_children):
+        return visited_children
 
-    def visit_implies(self, node, visited_children):
-        return self.handle_rexpr("=>", visited_children)
+    def visit_implies(self, _, visited_children):
+        return visited_children
 
-    def visit_equals(self, node, visited_children):
-        return self.handle_rexpr("=", visited_children)
+    def visit_equals(self, _, visited_children):
+        return visited_children
 
-    def visit_le(self, node, visited_children):
-        return self.handle_rexpr("<", visited_children)
+    def visit_le(self, _, visited_children):
+        return visited_children
 
-    def visit_leq(self, node, visited_children):
-        return self.handle_rexpr("<=", visited_children)
+    def visit_leq(self, _, visited_children):
+        return visited_children
 
-    def visit_ge(self, node, visited_children):
-        return self.handle_rexpr(">", visited_children)
+    def visit_ge(self, _, visited_children):
+        return visited_children
 
-    def visit_geq(self, node, visited_children):
-        return self.handle_rexpr(">=", visited_children)
+    def visit_geq(self, _, visited_children):
+        return visited_children
 
-    def visit_plus(self, node, visited_children):
-        return self.handle_rexpr("+", visited_children)
+    def visit_plus(self, _, visited_children):
+        return visited_children
 
-    def visit_minus(self, node, visited_children):
-        return self.handle_rexpr("-", visited_children)
+    def visit_minus(self, _, visited_children):
+        return visited_children
 
-    def visit_times(self, node, visited_children):
-        return self.handle_rexpr("*", visited_children)
+    def visit_times(self, _, visited_children):
+        return visited_children
 
     def generic_visit(self, node, visited_children):
-        result = ""
-        for child in visited_children:
-            result += str(child)
-        return result or node.text
+        if isinstance(visited_children, list) and len(visited_children) == 1:
+            # Gets rid of excessive list encapsulation, but introduces boilerplat code for many operands.
+            return visited_children[0]
+        return visited_children or node.text
 
 
 if __name__ == '__main__':

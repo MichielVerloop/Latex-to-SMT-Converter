@@ -1,4 +1,4 @@
-import re
+from inferred_types import *
 from parsimonious.grammar import Grammar
 
 
@@ -17,9 +17,10 @@ class BoolGrammar:
     sum             = "\\\\sum_{" lower "}" "^{" reduciblevarint "}" expr
     rsum            = "\\\\sum_{" lowup "}" expr
     lower           = localvar "=" reduciblevarint
-    lowup           = localvar (","localvar)* ":" reduciblevarint ("\\\\leq" / "<") (localvar ("\\\\leq" / "<"))+ reduciblevarint
+    lowup           = localvars ":" reduciblevarint ("\\\\leq" / "<") (localvar ("\\\\leq" / "<"))+ reduciblevarint
+    localvars       = localvar (","localvar)*
     reduciblevarint = (var / int) (("+" / "-") (var / int))*
-    varint          = (var / replaceablevar / int)
+    varint          = var / replaceablevar / int
     int             = (~"[0-9]"* ".")? ~"[0-9]"+
     localvar        = ~"[a-z_]+"i
     replaceablevar  = "\\\\markreplaceable{" var "}"
@@ -67,17 +68,36 @@ class BoolGrammar:
     )
 
     operand_dict = {
-        "distinct": ("\\neq", None),
-        "=": ("=", None),
-        "not": ("\\lnot", "Bool"),
-        "and": ("\\land", "Bool"),
-        "or": ("\\lor", "Bool"),
-        "=>": ("\\to", "Bool"),
-        "<=": ("\\leq", "Num"),
-        ">=": ("\\geq", "Num"),
-        "*": ("\\cdot", "Num"),
-        "<": ("<", "Num"),
-        ">": (">", "Num"),
-        "+": ("+", "Num"),
-        "-": ("-", "Num")
+        "distinct": ("\\neq", unknown, boolean),
+        "=": ("=", unknown, boolean),
+        "not": ("\\lnot", boolean, boolean),
+        "and": ("\\land", boolean, boolean),
+        "or": ("\\lor", boolean, boolean),
+        "=>": ("\\to", boolean, boolean),
+        "<=": ("\\leq", num, boolean),
+        ">=": ("\\geq", num, boolean),
+        "*": ("\\cdot", num, num),
+        "<": ("<", num, boolean),
+        ">": (">", num, boolean),
+        "+": ("+", num, num),
+        "-": ("-", num, num)
+    }
+
+    inverse_operand_dict = {
+        "\\bigwedge": ("and", boolean, boolean),
+        "\\bigvee": ("or", boolean, boolean),
+        "\\sum": ("+", boolean, boolean),
+        "\\neq": ("distinct", unknown, boolean),
+        "=": ("=", unknown, boolean),
+        "\\lnot": ("not", boolean, boolean),
+        "\\land": ("and", boolean, boolean),
+        "\\lor": ("or", boolean, boolean),
+        "\\to": ("=>", boolean, boolean),
+        "\\leq": ("<=", num, boolean),
+        "\\geq": (">=", num, boolean),
+        "\\cdot": ("*", num, num),
+        "<": ("<", num, boolean),
+        ">": (">", num, boolean),
+        "+": ("+", num, num),
+        "-": ("-", num, num)
     }
