@@ -215,7 +215,7 @@ class LatexVisitor(NodeVisitor):
         if self.variables.get(potential_var) is not None \
                 and not arg_type == self.variables.get(potential_var):
             raise ValueError("Type " + str(self.variables.get(potential_var)) + " was inferred but type "
-                             + arg_type + " was also inferred.")
+                             + arg_type + " was also inferred for variable " + potential_var + ".")
         if potential_var in self.variables and self.variables.get(potential_var) is None:
             self.variables.update({potential_var: arg_type})
 

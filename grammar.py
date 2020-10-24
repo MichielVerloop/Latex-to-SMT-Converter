@@ -86,7 +86,7 @@ class BoolGrammar:
     inverse_operand_dict = {
         "\\bigwedge": ("and", boolean, boolean),
         "\\bigvee": ("or", boolean, boolean),
-        "\\sum": ("+", boolean, boolean),
+        "\\sum": ("+", num, num),
         "\\neq": ("distinct", unknown, boolean),
         "=": ("=", unknown, boolean),
         "\\lnot": ("not", boolean, boolean),

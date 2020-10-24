@@ -352,3 +352,8 @@ class TestLatexVisitor(TestCase):
         self.assertEqual(None, self.lv.variables.get("x"))
         self.assertIn("y", self.lv.variables)
         self.assertEqual(None, self.lv.variables.get("x"))
+
+    def test_type_inference_sum(self):
+        self.lv.parse("((x\\geq3)\\land(x=\\sum_{i=0}^{3}b_i))")
+        self.assertIn("x", self.lv.variables)
+        self.assertEqual(num, self.lv.variables.get("x"))
