@@ -3,7 +3,7 @@ from unittest import TestCase
 
 from parsimonious import VisitationError
 
-from latex_to_smt import LatexVisitor, clean
+from latex_to_smt import LatexVisitor, check_inequalities, inequalities_rec
 from inferred_types import *
 
 class TestLatexVisitor(TestCase):
@@ -150,27 +150,66 @@ class TestLatexVisitor(TestCase):
         output = output.replace("\n", "").replace("\r\n", "")
         self.assertEqual("(+(- x_1 3)(- x_2 3))", output)
 
+    def test_check_inequalities(self):
+        self.assertTrue(check_inequalities(['0', '\\leq', 'i', '<', 5], {'i': 1}))
+        self.assertTrue(check_inequalities(['0', '\\leq', 'i', '\\leq', 'j'], {'i': 1, 'j': 1}))
+        self.assertFalse(check_inequalities(['0', '\\leq', 'i', '<', 'j'], {'i': 1, 'j': 1}))
+        self.assertTrue(check_inequalities(['0', '\\leq', 'i', '<', 'j'], {'i': 1, 'j': 2}))
+        self.assertTrue(check_inequalities(['0', '\\leq', 'i', '<', 'j'], {'i': 1, 'j': 531689}))
+        self.assertTrue(check_inequalities(['0', '\\leq', 'i', '<', 5], {'i': 1}))
+        self.assertFalse(check_inequalities(['0', '<', 'i', '<', 'i'], {'i': 1}))
+
+    def test_inequalities_rec(self):
+        # Single variable
+        self.assertEqual([{'i': 1}, {'i': 2}, {'i': 3}, {'i': 4}],
+                         [i for i in inequalities_rec(['0', '<', 'i', '<', '5'])])
+        self.assertEqual([{'i': 0}, {'i': 1}, {'i': 2}, {'i': 3}, {'i': 4}],
+                         [i for i in inequalities_rec(['0', '\\leq', 'i', '<', '5'])])
+
+        # Two variables
+        two_var_expected = [{'i': 0, 'j': 1},
+                            {'i': 0, 'j': 2},
+                            {'i': 0, 'j': 3},
+                            {'i': 1, 'j': 2},
+                            {'i': 1, 'j': 3},
+                            {'i': 2, 'j': 3}]
+        self.assertEqual(two_var_expected,
+                         [i for i in inequalities_rec(['0', '\\leq', 'i', '<', 'j', '<', '4'])])
+
+        # Three variables
+        three_var_expected = [{'i': 0, 'j': 0, 'k': 1},
+                              {'i': 0, 'j': 0, 'k': 2},
+                              {'i': 0, 'j': 1, 'k': 2},
+                              {'i': 1, 'j': 1, 'k': 2}]
+        self.assertEqual(three_var_expected,
+                         [i for i in inequalities_rec(['0', '\\leq', 'i', '\\leq', 'j', '<', 'k', '\\leq', '2'])])
+
+
+
     def test_visit_rwedge(self):
         # Lowup variant is equivalent to the lower and upper variant
         output_normal_wedge = self.lv.parse("\\bigwedge_{i=0}^{3}x_i")
         output = self.lv.parse("\\bigwedge_{i:0\\leqi<3}x_i")
-        output_normal_wedge = output_normal_wedge.replace("\n", "").replace("\r\n", "")
-        output = output.replace("\n", "").replace("\r\n", "")
-        print("HENK")
+        self.assertEqual(output_normal_wedge, output)
+
         # Lowup variant with 2 variables
         self.setUp()
         output = self.lv.parse("\\bigwedge_{i,j:0\\leqi<j<3}(x_i\\landx_j)")
         output = output.replace("\n", "").replace("\r\n", "")
-        self.assertEqual("(and(=> (distinct 0 1) (and x_0 x_1))(=> (distinct 1 1) (and x_1 x_1))(=> (distinct 0 2) ("
-                         "and x_0 x_2))(=> (distinct 1 2) (and x_1 x_2)))", output)
+        self.assertEqual("(and"
+                         "(and x_0 x_1)"
+                         "(and x_0 x_2)"
+                         "(and x_1 x_2))", output)
         print("ARNOLD")
         # Lowup variant with 3 variables
         self.setUp()
         output = self.lv.parse("\\bigwedge_{i,j,k:0\\leqi<j<k<4}x_{i,j,k}")
         output = output.replace("\n", "").replace("\r\n", "")
-        self.assertEqual("(and(=> (distinct 0 1 2) x_0_1_2)(=> (distinct 1 1 2) x_1_1_2)(=> (distinct 0 2 2) "
-                         "x_0_2_2)(=> (distinct 1 2 2) x_1_2_2)(=> (distinct 0 1 3) x_0_1_3)(=> (distinct 1 1 3) "
-                         "x_1_1_3)(=> (distinct 0 2 3) x_0_2_3)(=> (distinct 1 2 3) x_1_2_3))",
+        self.assertEqual("(and"
+                         "x_0_1_2"
+                         "x_0_1_3"
+                         "x_0_2_3"
+                         "x_1_2_3)",
                          output)
 
     def test_visit_indirect_type_inference(self):
@@ -191,9 +230,11 @@ class TestLatexVisitor(TestCase):
     def test_visit_rvee(self):
         output = self.lv.parse("\\bigvee_{i,j,k:0\\leqi<j<k<4}x_{i,j,k}")
         output = output.replace("\n", "").replace("\r\n", "")
-        self.assertEqual("(or(=> (distinct 0 1 2) x_0_1_2)(=> (distinct 1 1 2) x_1_1_2)(=> (distinct 0 2 2) x_0_2_2)("
-                         "=> (distinct 1 2 2) x_1_2_2)(=> (distinct 0 1 3) x_0_1_3)(=> (distinct 1 1 3) x_1_1_3)(=> ("
-                         "distinct 0 2 3) x_0_2_3)(=> (distinct 1 2 3) x_1_2_3))",
+        self.assertEqual("(or"
+                         "x_0_1_2"
+                         "x_0_1_3"
+                         "x_0_2_3"
+                         "x_1_2_3)",
                          output)
 
     def test_visit_rvee_wrong_inequalities(self):
@@ -224,9 +265,11 @@ class TestLatexVisitor(TestCase):
     def test_visit_rsum(self):
         output = self.lv.parse("\\sum_{i,j,k:0\\leqi<j<k<4}x_{i,j,k}")
         output = output.replace("\n", "").replace("\r\n", "")
-        self.assertEqual("(+(=> (distinct 0 1 2) x_0_1_2)(=> (distinct 1 1 2) x_1_1_2)(=> (distinct 0 2 2) x_0_2_2)("
-                         "=> (distinct 1 2 2) x_1_2_2)(=> (distinct 0 1 3) x_0_1_3)(=> (distinct 1 1 3) x_1_1_3)(=> ("
-                         "distinct 0 2 3) x_0_2_3)(=> (distinct 1 2 3) x_1_2_3))",
+        self.assertEqual("(+"
+                         "x_0_1_2"
+                         "x_0_1_3"
+                         "x_0_2_3"
+                         "x_1_2_3)",
                          output)
 
     def test_visit_and(self):

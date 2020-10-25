@@ -110,6 +110,64 @@ def resolve(known_vars, varint):
     return vars_ + reduced_num
 
 
+def check_inequalities(inequalities: [str], assigned_vars: {str, int}) -> bool:
+    # Substitute the dictionary into the inequalities
+    inequalities = [assigned_vars[eq] if eq in assigned_vars else eq for eq in inequalities]
+
+    # Solve the inequalities
+    for i in range(len(inequalities))[1::2]:
+        if inequalities[i] == '\\leq' and not int(inequalities[i-1]) <= int(inequalities[i+1]):
+            return False
+        elif inequalities[i] == '<' and not int(inequalities[i-1]) < int(inequalities[i+1]):
+            return False
+        elif not inequalities[i] == '\\leq' and not inequalities[i] == '<':
+            raise ValueError("Illegal inequality. Expected \\leq or < but got '" + str(inequalities[i]) + "'.")
+    return True
+
+
+def solve_inequalities(inequalities: [str], all_vars: [str], current_var: str,
+                       assigned_vars: {str, int}, current_included: bool) -> {str, int}:
+    for var in all_vars[all_vars.index(current_var) + (0 if current_included else 1):]:
+        in_between = inequalities[inequalities.index(var) - 1]
+        old_var = inequalities[inequalities.index(var) - 2]
+        if old_var in assigned_vars:
+            old_var = assigned_vars[old_var]
+        assigned_vars.update({var: int(old_var) + 1 if in_between == "<" else int(old_var)})
+    return assigned_vars
+
+
+def inequalities_rec(inequalities: [str], all_vars: [str] = None, current_var: str = None,
+                     assigned_vars: {str, int}=None):
+    if all_vars is None:  # Generate all_vars from inequalities
+        all_vars = [eq for eq in inequalities if not re.match("<|\\\\leq|(-?[0-9]+)", eq)]
+    if current_var is None:  # Set current_var to all_vars[0]
+        current_var = all_vars[0]
+    if assigned_vars is None:  # Set all vars to the lowest var, recursion will take care of the rest
+        assigned_vars = {}
+        assigned_vars.update(solve_inequalities(inequalities, all_vars, current_var, assigned_vars,
+                                                current_included=True))
+    # Base case inequalities not satisfied and final var is reached
+    if not check_inequalities(inequalities, assigned_vars) and current_var == all_vars[-1]:
+        return
+
+    # Base case last var: actual yields go here.
+    if current_var == all_vars[-1]:
+        # dict() is to yield the copy of the array so no shenanigans happen.
+        yield dict(assigned_vars)
+
+    # Recursive case
+
+    # Go to the next variable if possible.
+    if not current_var == all_vars[-1]:
+        yield from inequalities_rec(inequalities, all_vars, all_vars[all_vars.index(current_var) + 1], assigned_vars)
+    # Increment the current variable and determine the lowest possible values for all subsequent variables
+    assigned_vars.update({current_var: assigned_vars[current_var] + 1})
+    assigned_vars.update(solve_inequalities(inequalities, all_vars, current_var, assigned_vars, current_included=False))
+    # If the inequalities still hold true, make a recursive call, else return
+    if check_inequalities(inequalities, assigned_vars):
+        yield from inequalities_rec(inequalities, all_vars, current_var, assigned_vars)
+
+
 def truemin(var, inequalities, minimum):
     for i in inequalities:
         if i == "<":
@@ -219,6 +277,11 @@ class LatexVisitor(NodeVisitor):
         if potential_var in self.variables and self.variables.get(potential_var) is None:
             self.variables.update({potential_var: arg_type})
 
+    def __substitute_dict__(self, expr, dic):
+        for key in dic:
+            expr = self.__substitute__(expr, key, dic[key])
+        return expr
+
     def __substitute__(self, expr, localvar, value):
         # Copy dict and add localvar:value to it.
         known_vars = self.global_vars.copy()
@@ -282,21 +345,19 @@ class LatexVisitor(NodeVisitor):
             operand = BoolGrammar.inverse_operand_dict.get(operand)[0]
         result = ""
         if known_operand:  # No need to add an operand or braces if the operands repeat.
-            result += "(" + operand + "\n"
+            result += "(" + operand
 
         # substitute the variable in the expression
         for i in range(localvarstart, localvarend):
-            # Because we match on adjacent underscores, we need to do two passes.
-            # Only in the second one we add it to the result
-            result += self.__substitute__(expr, localvar, i) + "\n"
+            result += "\n" + self.__substitute__(expr, localvar, i)
         # Replace the general version of the variables with the non-general version
         localsetvars = OrderedDict()
         for var in self.variables:
-            # It is okay for this not to match on _ + localvar + _ as it will be taken care of in the next section.
+            # It is okay for this not to match on _ + localvar + _ as __substitute__ doesn't wrongly replace variables.
             if "_" + localvar in var:
                 localsetvars.update({var: self.variables.get(var)})
         for var in localsetvars:
-            self.variables.pop(var)
+            self.variables.pop(var)  # Wrongly deleted x_ii if x_i is matched, but x_ii is added to the back again.
             for i in range(localvarstart, localvarend):
                 newvar = self.__substitute__(var, localvar, i)
                 self.variables.update({newvar: localsetvars.get(var)})
@@ -309,24 +370,47 @@ class LatexVisitor(NodeVisitor):
     def handle_rsum(self, operand, visited_children):
         operand, arg_type, res_type = BoolGrammar.inverse_operand_dict.get(operand)
         localvars = visited_children[1][0]
-        minimum = int(visited_children[1][1][0])
-        inequalities = visited_children[1][2]
-        maximum = int(visited_children[1][3][0])
+        minimum = visited_children[1][1][0]
+        maximum = visited_children[1][3][0]
+        inequalities = [minimum] + visited_children[1][2] + [maximum]
         expr, typ = visited_children[3]
-        expr = "(=> (distinct" + "".join([" \markreplaceable{" + i + "}" for i in localvars]) + ") " + expr + ")"
-        # The vars with the lowest length are generated first, so the "i" doesn't replace the i in "xi"
-        for var in sorted(localvars, key=len, reverse=True):
-            if not var in inequalities:
-                raise ValueError("Var " + var + " was not found in " + str(inequalities))
-            expr = self.handle_sum("", var, truemin(var, inequalities, minimum),
-                                   truemax(var, inequalities, maximum) + 1,  # + 1 is to compensate for the exclusivity
-                                   expr)  # of the upper bound
-        remaining_vars = [x for x in inequalities if x not in localvars + ["\\leq"] + ["<"]]
 
+        # Check for variables in the inequalities that are not in the local variables
+        remaining_vars = [x for x in inequalities if x not in localvars and not re.match("<|\\\\leq|(-?[0-9]+)", x)]
         if len(remaining_vars) != 0:
             raise ValueError("Found variable(s) " + str(remaining_vars) + " in the inequalities " + str(inequalities)
-                             + "that were not introduced in the local variables, " + str(localvars) + ".")
-        result = "(" + operand + "\n" + expr + ")"
+                             + " that were not introduced in the local variables, " + str(localvars) + ".")
+        # Conversely, check for variables in the local variables that are not in the inequalities
+        remaining_vars = [x for x in localvars if x not in inequalities]
+        if len(remaining_vars) != 0:
+            raise ValueError("Found variable(s) " + str(remaining_vars) + " in the local variables " + str(localvars)
+                             + " that were not introduced in the inequalities, " + str(inequalities) + ".")
+
+        # Generate the rest of the expression
+        result = "(" + operand +\
+               ''.join("\n" + self.__substitute_dict__(expr, dic) for dic in inequalities_rec(inequalities)) + ")"
+
+        # Update self.variables
+        localsetvars = OrderedDict()
+        for var in self.variables:
+            # It is okay for this not to match on _ + localvar + _ as __substitute__ doesn't wrongly replace variables.
+            for localvar in localvars:
+                if "_" + localvar in var:
+                    localsetvars.update({var: self.variables.get(var)})
+        for var in localsetvars:
+            self.variables.pop(var)  # Wrongly deleted x_ii if x_i is matched, but x_ii is added to the back again.
+            for dic in inequalities_rec(inequalities):
+                newvar = self.__substitute_dict__(var, dic)
+                self.variables.update({newvar: localsetvars.get(var)})
+
+        # expr = "(=> " + crap + " " + expr + ")"
+        # # The vars with the lowest length are generated first, so the "i" doesn't replace the i in "xi"
+        # for var in sorted(localvars, key=len, reverse=True):
+        #     if var not in inequalities:
+        #         raise ValueError("Var " + var + " was not found in " + str(inequalities))
+        #     expr = self.handle_sum("", var, truemin(var, inequalities, minimum),
+        #                            truemax(var, inequalities, maximum) + 1,  # + 1 is to compensate for the exclusivity
+        #                            expr)  # of the upper bound
         return result, res_type
 
     def visit_reduciblevarint(self, _, visited_children):
