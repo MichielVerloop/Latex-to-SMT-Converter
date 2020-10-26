@@ -1,4 +1,4 @@
-# Latex_to_SMT_Converter
+# Latex to SMT Converter
 Converts latex boolean formulas to the smt format used by SAT-solvers such as z3.
 
 # Features
