@@ -100,5 +100,15 @@ sum                       | `\sum`                                    | `\sum_{a
 sum (alt)                 | `\sum`                                    | `\sum_{a,b,c,d:0<a<b<c<d\leq6} ((x_a + x_b) - (x_c + x_d))`
 if-then-else              | `\T{if} expr \T{then} expr \T{else} expr` | `\T{if} a \T{then} 5 \T{else} 3`
 
+# Usage 
+Usage: cli.py [OPTIONS] FORMULA
 
+* Converts a formula in LaTeX format to smt.
 
+Options:  
+short arg | long arg            | description
+--------- | ------------------- | -----------
+-g        | --global_vars TEXT  | Global variables that should be used, of the form 'x = y,y = z'.
+-n        | --num_type TEXT     | The default type of number that is converted to when detecting numerical types. Should either be Int (default) or Real
+-d        | --default_type TEXT | The default type for variables that could not be inferred. By default, this is set to Int.
+          | --help              | Show this message and exit.
