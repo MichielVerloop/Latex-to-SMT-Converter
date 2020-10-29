@@ -67,6 +67,12 @@ The header of your tex file must contain the following:
 * \newcommand{\T}[1]{\texttt{#1}} % Required for `if-then-else`.
 * \newcommand{\markreplaceable}[1]{#1} % Necessary for marking formulas that aren't subscripted for replacement by big operands. Does nothing to alter the pdf output.
 
+The following libraries must be installed for the code to work:  
+* click 7.1.2
+* parsimonious 0.8.1
+* regex 2020.9.27
+
+# List of operands
 Table of all repeatable operands that require brackets:
 Operand                   | tex equivalent  | example
 ------------------------- | --------------- | ------- 
