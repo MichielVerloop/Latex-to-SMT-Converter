@@ -1,6 +1,14 @@
 # Latex to SMT Converter
 Converts latex boolean formulas to the smt format used by SAT-solvers such as z3.
 
+# Table of Contents  
+1. [Features](#features)  
+2. [Example usages](#example-usages)  
+3. [Limitations](#limitations)
+4. [Requirements](#requirements)
+5. [List of operands](#list-of-operands)
+6. [Usage](#usage)
+
 # Features
 * Converts the LaTeX boolean format to smt while requiring minimal added input from the user.  
 * Support for global variables.
