@@ -75,9 +75,8 @@ The header of your tex file must contain the following:
 * \newcommand{\T}[1]{\texttt{#1}} % Required for `if-then-else`.
 * \newcommand{\markreplaceable}[1]{#1} % Necessary for marking formulas that aren't subscripted for replacement by big operands. Does nothing to alter the pdf output.
 
-The project runs on Python3.10. Versions 3.8 and 3.9 likely also work.
-The required dependencies for the project have to be installed. This can be done by running the following command:
-`pip install -r requirements.txt`
+The project runs on Python3.10. Versions 3.8 and 3.9 likely also work.  
+The required dependencies for the project have to be installed. This can be done by running `pip install -r requirements.txt`.
 
 # List of operands
 Table of all repeatable operands that require brackets:
