@@ -21,7 +21,7 @@ Converts latex boolean formulas to the smt format used by SAT-solvers such as z3
 # Example usages
 The source tex `(5 \geq \sum_{i=0}^{n} \T{if}\, (2 = (p_i + p_{i+1})) \,\T{then}\, 1 \,\T{else}\, 0)` produces the below formula in the pdf:  
 ![Example1](https://i.imgur.com/9yA5mfg.png)  
-Using the arguments `cli.py "(5 \geq \sum_{i=0}^{n} \T{if}\, (2 = (p_i + p_{i+1})) \,\T{then}\, 1 \,\T{else}\, 0)" -g n=3`, the tool can convert it to the following smt file:
+Using the arguments `python cli.py "(5 \geq \sum_{i=0}^{n} \T{if}\, (2 = (p_i + p_{i+1})) \,\T{then}\, 1 \,\T{else}\, 0)" -g n=3`, the tool can convert it to the following smt file:
 ```
 (declare-const n Int)
 (declare-const p_0 Int)
@@ -41,7 +41,7 @@ This smt format can then be solved using z3, see [this](https://rise4fun.com/Z3/
 
 The source tex `\bigwedge_{i,j:0\leq i<j<4} (((\markreplaceable{i} + \markreplaceable{j}) < 5) \to \lnot((x_i + w_i) \geq x_j))` produces the below formula in the pdf:  
 ![Example2](https://i.imgur.com/rZ0cGGg.png)  
-Using the arguments `cli.py "\bigwedge_{i,j:0\leq i<j<4} (((\markreplaceable{i} + \markreplaceable{j}) < 5) \to \lnot((x_i + w_i) \geq x_j))"`, the tool can convert it to the following smt file:
+Using the arguments `python cli.py "\bigwedge_{i,j:0\leq i<j<4} (((\markreplaceable{i} + \markreplaceable{j}) < 5) \to \lnot((x_i + w_i) \geq x_j))"`, the tool can convert it to the following smt file:
 ```
 (declare-const x_0 Int)
 (declare-const x_1 Int)
